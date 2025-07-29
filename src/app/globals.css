@@ -1,0 +1,230 @@
+@import "tailwindcss";
+
+:root {
+  --background: #FFFDF9;
+  --foreground: #171717;
+  /* Arpin Brand Colors - complete palette */
+  --arpin-navy-blue: #21386d;        /* Depth, expertise, trust, stability */
+  --arpin-intermediate-blue: #384c81; /* Wisdom, integrity, responsibility */
+  --arpin-vivid-blue: #2c92d4;       /* Efficiency, communication, transparency */
+  --arpin-sky-blue: #3099cc;         /* Bright, modern accent color */
+  --arpin-primary-blue: #21386d;     /* Primary brand color */
+  --arpin-medium-blue: #384c81;      /* Medium blue for supporting elements */
+  --arpin-light-blue: #2c92d4;       /* Light blue for accents and highlights */
+  --arpin-vibrant-orange: #fa5723;   /* Brand accent color */
+  --arpin-warm-grey: #9E9E9E;        /* Supporting neutral color */
+  --arpin-orange: #fa5723;           /* Primary orange */
+  --arpin-gray: #f8f9fa;
+  --arpin-border: #e0e0e0;
+  --arpin-green: #28a745;
+  --success-green: #28a745;
+  --warning-yellow: #ffc107;
+  --error-red: #dc3545;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-mono: var(--font-geist-mono);
+  --font-lato: var(--font-lato);
+  --color-arpin-navy-blue: var(--arpin-navy-blue);
+  --color-arpin-intermediate-blue: var(--arpin-intermediate-blue);
+  --color-arpin-vivid-blue: var(--arpin-vivid-blue);
+  --color-arpin-sky-blue: var(--arpin-sky-blue);
+  --color-arpin-primary-blue: var(--arpin-primary-blue);
+  --color-arpin-medium-blue: var(--arpin-medium-blue);
+  --color-arpin-light-blue: var(--arpin-light-blue);
+  --color-arpin-vibrant-orange: var(--arpin-vibrant-orange);
+  --color-arpin-warm-grey: var(--arpin-warm-grey);
+  --color-arpin-orange: var(--arpin-orange);
+  --color-arpin-gray: var(--arpin-gray);
+  --color-arpin-border: var(--arpin-border);
+  --color-arpin-green: var(--arpin-green);
+  --color-success-green: var(--success-green);
+  --color-warning-yellow: var(--warning-yellow);
+  --color-error-red: var(--error-red);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Smaller font size for main content area (everything except header) */
+.main-content {
+  font-size: 0.875rem; /* 14px, down from default 16px */
+}
+
+/* Preserve normal font sizes within the header */
+.quote-header {
+  font-size: 1rem; /* Keep default 16px for header */
+}
+
+/* Tooltip styles */
+.tooltip {
+  position: relative;
+  cursor: help;
+}
+
+.tooltip::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--arpin-primary-blue);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  white-space: nowrap;
+  max-width: 300px;
+  white-space: normal;
+  width: max-content;
+  max-width: 400px;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--arpin-primary-blue);
+  margin-bottom: -5px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+}
+
+.tooltip:hover::before,
+.tooltip:hover::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Lato font for headlines */
+.font-lato {
+  font-family: var(--font-lato), Arial, Helvetica, sans-serif;
+}
+
+/* Arial font for body text and running copy */
+.font-arial {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Custom scrollbar for horizontal scrolling */
+.horizontal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--arpin-light-blue) var(--arpin-gray);
+}
+
+.horizontal-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.horizontal-scroll::-webkit-scrollbar-track {
+  background: var(--arpin-gray);
+}
+
+.horizontal-scroll::-webkit-scrollbar-thumb {
+  background: var(--arpin-light-blue);
+  border-radius: 4px;
+}
+
+.horizontal-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--arpin-primary-blue);
+}
+
+/* Input focus styles */
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--arpin-light-blue);
+  outline-offset: 2px;
+}
+
+/* Checkbox styles */
+input[type="checkbox"] {
+  accent-color: var(--arpin-primary-blue);
+}
+
+/* Print styles - Only show comparison content */
+@media print {
+  /* Set landscape orientation */
+  @page {
+    size: landscape;
+    margin: 0.5in;
+  }
+  
+  /* Hide everything by default */
+  * {
+    visibility: hidden;
+  }
+  
+  /* Show only the comparison content */
+  .print-content, .print-content * {
+    visibility: visible;
+  }
+  
+  /* Position the comparison content at the top of the page */
+  .print-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  
+  /* Hide print button when printing */
+  .print-button {
+    display: none !important;
+  }
+  
+  /* Hide all tooltips during print */
+  .tooltip, .tooltip::before, .tooltip::after {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  
+  /* Hide ServiceItemTooltip component */
+  .group .invisible,
+  .group .group-hover\:visible,
+  .cursor-help svg,
+  [class*="tooltip"] {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  
+  /* Ensure proper page breaks */
+  .print-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  
+  /* Optimize text for print */
+  body {
+    font-size: 12pt;
+    line-height: 1.4;
+    color: black;
+    background: white;
+  }
+  
+  /* Remove shadows and hover effects for print */
+  .shadow-lg, .shadow-sm, .hover\:shadow-xl {
+    box-shadow: none !important;
+  }
+}
