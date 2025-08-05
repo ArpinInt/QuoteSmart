@@ -77,20 +77,23 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
           {/* Shipment Details Section */}
           <div>
             <h3 className="text-md font-semibold text-[var(--arpin-primary-blue)] mb-4 font-lato">Shipment Details</h3>
-            <div className="grid grid-cols-1 gap-6">
-              {/* Weight */}
-              <div className="bg-gray-50 rounded-lg border-2 border-gray-200 p-5">
-                <label className="block text-sm font-semibold text-gray-900 mb-3 font-lato">
-                  Estimated Shipment Weight (lbs)
-                </label>
-                <div className="overflow-x-auto horizontal-scroll">
-                  <div className="grid gap-4 px-1 py-1" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(200px, 1fr))` }}>
-                    {quotes.map((quote, index) => {
-                      const isArpin = quote.id === 'arpin-quote';
-                      return (
-                        <div key={quote.id}>
-                          <label className={`block text-xs ${isArpin ? 'font-bold' : 'font-medium'} text-[var(--arpin-primary-blue)] mb-1`}>
+            <div className="bg-gray-50 rounded-lg border-2 border-gray-200 p-5">
+              <div className="overflow-x-auto horizontal-scroll">
+                <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(250px, 1fr))` }}>
+                  {quotes.map((quote, index) => {
+                    const isArpin = quote.id === 'arpin-quote';
+                    return (
+                      <div key={quote.id} className="space-y-6">
+                        <div className="text-center">
+                          <label className={`block text-sm ${isArpin ? 'font-bold' : 'font-semibold'} text-[var(--arpin-primary-blue)] mb-4 font-lato`}>
                             {quote.companyName || `Company ${index + 1}`}
+                          </label>
+                        </div>
+                        
+                        {/* Weight Input */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-2">
+                            Estimated Shipment Weight (lbs)
                           </label>
                           <input
                             type="number"
@@ -102,25 +105,11 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
                             placeholder="0"
                           />
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
 
-              {/* Volume */}
-              <div className="bg-gray-50 rounded-lg border-2 border-gray-200 p-5">
-                <label className="block text-sm font-semibold text-gray-900 mb-3 font-lato">
-                  Estimated Shipment Volume (cu ft)
-                </label>
-                <div className="overflow-x-auto horizontal-scroll">
-                  <div className="grid gap-4 px-1 py-1" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(200px, 1fr))` }}>
-                    {quotes.map((quote, index) => {
-                      const isArpin = quote.id === 'arpin-quote';
-                      return (
-                        <div key={quote.id}>
-                          <label className={`block text-xs ${isArpin ? 'font-bold' : 'font-medium'} text-[var(--arpin-primary-blue)] mb-1`}>
-                            {quote.companyName || `Company ${index + 1}`}
+                        {/* Volume Input */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-2">
+                            Estimated Shipment Volume (cu ft)
                           </label>
                           <input
                             type="number"
@@ -132,9 +121,9 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
                             placeholder="0.0"
                           />
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -265,15 +254,16 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
                 Enter the estimated transit time range for each company (in days).
               </p>
               <div className="overflow-x-auto horizontal-scroll">
-                <div className="grid gap-8 px-1 py-1" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(250px, 1fr))` }}>
+                <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(250px, 1fr))` }}>
                   {quotes.map((quote, index) => {
                     const isArpin = quote.id === 'arpin-quote';
-                    const isLastItem = index === quotes.length - 1;
                     return (
-                      <div key={quote.id} className={`${!isLastItem ? 'border-r border-gray-300 pr-4' : ''}`}>
-                        <label className={`block text-xs ${isArpin ? 'font-bold' : 'font-medium'} text-[var(--arpin-primary-blue)] mb-2`}>
-                          {quote.companyName || `Company ${index + 1}`}
-                        </label>
+                      <div key={quote.id} className="space-y-4">
+                        <div className="text-center">
+                          <label className={`block text-sm ${isArpin ? 'font-bold' : 'font-semibold'} text-[var(--arpin-primary-blue)] mb-2 font-lato`}>
+                            {quote.companyName || `Company ${index + 1}`}
+                          </label>
+                        </div>
                         <div className="flex items-center space-x-2">
                           <div className="flex-1">
                             <input
@@ -340,14 +330,16 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
                 Enter the insurance coverage percentage offered by each company.
               </p>
               <div className="overflow-x-auto horizontal-scroll">
-                <div className="grid gap-4 px-1 py-1" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(200px, 1fr))` }}>
+                <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(250px, 1fr))` }}>
                   {quotes.map((quote, index) => {
                     const isArpin = quote.id === 'arpin-quote';
                     return (
-                      <div key={quote.id}>
-                        <label className={`block text-xs ${isArpin ? 'font-bold' : 'font-medium'} text-[var(--arpin-primary-blue)] mb-1`}>
-                          {quote.companyName || `Company ${index + 1}`}
-                        </label>
+                      <div key={quote.id} className="space-y-4">
+                        <div className="text-center">
+                          <label className={`block text-sm ${isArpin ? 'font-bold' : 'font-semibold'} text-[var(--arpin-primary-blue)] mb-2 font-lato`}>
+                            {quote.companyName || `Company ${index + 1}`}
+                          </label>
+                        </div>
                         <div className="relative">
                           <input
                             type="number"
