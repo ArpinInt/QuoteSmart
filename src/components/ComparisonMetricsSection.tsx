@@ -72,14 +72,16 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
         </p>
       </div>
 
-      <div className="p-6">
+      {/* Horizontal Scroll Container */}
+      <div className="overflow-x-auto overflow-y-hidden">
+        <div className="p-6" style={{ minWidth: `${Math.max(1400, quotes.length * 450)}px` }}>
         <div className="space-y-8">
           {/* Shipment Details Section */}
           <div>
             <h3 className="text-md font-semibold text-[var(--arpin-primary-blue)] mb-4 font-lato">Shipment Details</h3>
             <div className="bg-gray-50 rounded-lg border-2 border-gray-200 p-5">
-              <div className="overflow-x-auto horizontal-scroll">
-                <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(250px, 1fr))` }}>
+              <div>
+                <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(400px, 1fr))` }}>
                   {quotes.map((quote, index) => {
                     const isArpin = quote.id === 'arpin-quote';
                     return (
@@ -151,8 +153,8 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
                   </div>
                 </div>
               </div>
-              <div className="overflow-x-auto horizontal-scroll">
-                <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(200px, 1fr))` }}>
+              <div>
+                <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(350px, 1fr))` }}>
                   {quotes.map((quote, index) => {
                     const isArpin = quote.id === 'arpin-quote';
                     const calc = calculations[quote.id];
@@ -206,8 +208,8 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
                   </div>
                 </div>
               </div>
-              <div className="overflow-x-auto horizontal-scroll">
-                <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(200px, 1fr))` }}>
+              <div>
+                <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(350px, 1fr))` }}>
                   {quotes.map((quote, index) => {
                     const isArpin = quote.id === 'arpin-quote';
                     const calc = calculations[quote.id];
@@ -253,8 +255,8 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
               <p className="text-sm text-gray-600 mb-4">
                 Enter the estimated transit time range for each company (in days).
               </p>
-              <div className="overflow-x-auto horizontal-scroll">
-                <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(250px, 1fr))` }}>
+              <div>
+                <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(400px, 1fr))` }}>
                   {quotes.map((quote, index) => {
                     const isArpin = quote.id === 'arpin-quote';
                     return (
@@ -329,8 +331,8 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
               <p className="text-sm text-gray-600 mb-4">
                 Enter the insurance coverage percentage offered by each company.
               </p>
-              <div className="overflow-x-auto horizontal-scroll">
-                <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(250px, 1fr))` }}>
+              <div>
+                <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(400px, 1fr))` }}>
                   {quotes.map((quote, index) => {
                     const isArpin = quote.id === 'arpin-quote';
                     return (
@@ -362,6 +364,7 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
               </div>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>
