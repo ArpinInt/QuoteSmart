@@ -74,14 +74,14 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
 
       {/* Horizontal Scroll Container */}
       <div className="overflow-x-auto overflow-y-hidden">
-        <div className="p-6" style={{ minWidth: `${Math.max(1400, quotes.length * 450)}px` }}>
+        <div className="p-6" style={{ minWidth: `${Math.max(1000, quotes.length * 320)}px` }}>
         <div className="space-y-8">
           {/* Shipment Details Section */}
           <div>
             <h3 className="text-md font-semibold text-[var(--arpin-primary-blue)] mb-4 font-lato">Shipment Details</h3>
             <div className="bg-gray-50 rounded-lg border-2 border-gray-200 p-5">
               <div>
-                <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(400px, 1fr))` }}>
+                <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(260px, 1fr))` }}>
                   {quotes.map((quote, index) => {
                     const isArpin = quote.id === 'arpin-quote';
                     return (
@@ -100,10 +100,12 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
                           <input
                             type="number"
                             min="0"
+                            max="999999"
                             step="1"
                             value={quote.shipmentWeight ?? ''}
                             onChange={(e) => handleShipmentDetailChange(quote.id, 'shipmentWeight', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent bg-white text-gray-900 relative z-10"
+                            inputMode="numeric"
+                            className="w-[8ch] px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent bg-white text-gray-900 relative z-10"
                             placeholder="0"
                           />
                         </div>
@@ -116,10 +118,12 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
                           <input
                             type="number"
                             min="0"
-                            step="0.1"
+                            max="999999.99"
+                            step="0.01"
                             value={quote.shipmentVolume ?? ''}
                             onChange={(e) => handleShipmentDetailChange(quote.id, 'shipmentVolume', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent bg-white text-gray-900 relative z-10"
+                            inputMode="decimal"
+                            className="w-[10ch] px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent bg-white text-gray-900 relative z-10"
                             placeholder="0.0"
                           />
                         </div>
@@ -154,7 +158,7 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
                 </div>
               </div>
               <div>
-                <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(350px, 1fr))` }}>
+                <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(260px, 1fr))` }}>
                   {quotes.map((quote, index) => {
                     const isArpin = quote.id === 'arpin-quote';
                     const calc = calculations[quote.id];
@@ -163,15 +167,17 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
                     
                     return (
                       <div key={quote.id}>
-                        <label className={`block text-xs ${isArpin ? 'font-bold' : 'font-medium'} text-[var(--arpin-primary-blue)] mb-1`}>
-                          {quote.companyName || `Company ${index + 1}`}
-                          {isLowest && pricePerPound && (
-                            <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                              Lowest in price per lb
-                            </span>
-                          )}
-                        </label>
-                        <div className={`w-full px-3 py-2 border rounded-md font-medium ${
+                        <div className="flex justify-center">
+                          <label className={`text-center inline-block text-xs ${isArpin ? 'font-bold' : 'font-medium'} text-[var(--arpin-primary-blue)] mb-1`}>
+                            {quote.companyName || `Company ${index + 1}`}
+                            {isLowest && pricePerPound && (
+                              <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                Lowest in price per lb
+                              </span>
+                            )}
+                          </label>
+                        </div>
+                        <div className={`w-[12ch] mx-auto text-center px-3 py-2 border rounded-md font-medium ${
                           isLowest 
                             ? 'bg-green-50 border-green-200 text-green-800' 
                             : 'bg-gray-100 border-gray-200 text-gray-700'
@@ -209,7 +215,7 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
                 </div>
               </div>
               <div>
-                <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(350px, 1fr))` }}>
+                <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(260px, 1fr))` }}>
                   {quotes.map((quote, index) => {
                     const isArpin = quote.id === 'arpin-quote';
                     const calc = calculations[quote.id];
@@ -218,15 +224,17 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
                     
                     return (
                       <div key={quote.id}>
-                        <label className={`block text-xs ${isArpin ? 'font-bold' : 'font-medium'} text-[var(--arpin-primary-blue)] mb-1`}>
-                          {quote.companyName || `Company ${index + 1}`}
-                          {isLowest && pricePerCubicFoot && (
-                            <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                              Lowest in price per cu ft
-                            </span>
-                          )}
-                        </label>
-                        <div className={`w-full px-3 py-2 border rounded-md font-medium ${
+                        <div className="flex justify-center">
+                          <label className={`text-center inline-block text-xs ${isArpin ? 'font-bold' : 'font-medium'} text-[var(--arpin-primary-blue)] mb-1`}>
+                            {quote.companyName || `Company ${index + 1}`}
+                            {isLowest && pricePerCubicFoot && (
+                              <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                                Lowest in price per cu ft
+                              </span>
+                            )}
+                          </label>
+                        </div>
+                        <div className={`w-[12ch] mx-auto text-center px-3 py-2 border rounded-md font-medium ${
                           isLowest 
                             ? 'bg-green-50 border-green-200 text-green-800' 
                             : 'bg-gray-100 border-gray-200 text-gray-700'
@@ -255,41 +263,41 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
               <p className="text-sm text-gray-600 mb-4">
                 Enter the estimated transit time range for each company (in days).
               </p>
-              <div>
-                <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(400px, 1fr))` }}>
+                <div>
+                  <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(260px, 1fr))` }}>
                   {quotes.map((quote, index) => {
                     const isArpin = quote.id === 'arpin-quote';
                     return (
                       <div key={quote.id} className="space-y-4">
-                        <div className="text-center">
-                          <label className={`block text-sm ${isArpin ? 'font-bold' : 'font-semibold'} text-[var(--arpin-primary-blue)] mb-2 font-lato`}>
+                        <div className="flex justify-center">
+                          <label className={`text-center inline-block text-sm ${isArpin ? 'font-bold' : 'font-semibold'} text-[var(--arpin-primary-blue)] mb-2 font-lato`}>
                             {quote.companyName || `Company ${index + 1}`}
                           </label>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <div className="flex-1">
-                            <input
-                              type="number"
-                              min="1"
-                              step="1"
-                              value={quote.transitTimeMin ?? ''}
-                              onChange={(e) => handleTransitTimeChange(quote.id, 'min', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent bg-white text-gray-900 text-center relative z-10"
-                              placeholder="Min"
-                            />
-                          </div>
+                        <div className="flex items-center justify-center gap-2">
+                          <input
+                            type="number"
+                            min="1"
+                            max="99"
+                            step="1"
+                            value={quote.transitTimeMin ?? ''}
+                            onChange={(e) => handleTransitTimeChange(quote.id, 'min', e.target.value)}
+                            inputMode="numeric"
+                            className="w-[8ch] px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent bg-white text-gray-900 text-center"
+                            placeholder="Min"
+                          />
                           <span className="text-gray-500 text-sm">to</span>
-                          <div className="flex-1">
-                            <input
-                              type="number"
-                              min="1"
-                              step="1"
-                              value={quote.transitTimeMax ?? ''}
-                              onChange={(e) => handleTransitTimeChange(quote.id, 'max', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent bg-white text-gray-900 text-center relative z-10"
-                              placeholder="Max"
-                            />
-                          </div>
+                          <input
+                            type="number"
+                            min="1"
+                            max="99"
+                            step="1"
+                            value={quote.transitTimeMax ?? ''}
+                            onChange={(e) => handleTransitTimeChange(quote.id, 'max', e.target.value)}
+                            inputMode="numeric"
+                            className="w-[8ch] px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent bg-white text-gray-900 text-center"
+                            placeholder="Max"
+                          />
                           <span className="text-gray-500 text-sm">days</span>
                         </div>
                         {quote.transitTimeMin && quote.transitTimeMax && (
@@ -332,28 +340,27 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
                 Enter the insurance coverage percentage offered by each company.
               </p>
               <div>
-                <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(400px, 1fr))` }}>
+                <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(260px, 1fr))` }}>
                   {quotes.map((quote, index) => {
                     const isArpin = quote.id === 'arpin-quote';
                     return (
-                      <div key={quote.id} className="space-y-4">
-                        <div className="text-center">
-                          <label className={`block text-sm ${isArpin ? 'font-bold' : 'font-semibold'} text-[var(--arpin-primary-blue)] mb-2 font-lato`}>
+                      <div key={quote.id} className="space-y-2">
+                        <div className="flex flex-col items-center">
+                          <label className={`text-center inline-block text-sm ${isArpin ? 'font-bold' : 'font-semibold'} text-[var(--arpin-primary-blue)] font-lato`}>
                             {quote.companyName || `Company ${index + 1}`}
                           </label>
-                        </div>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.1"
-                            value={quote.insurancePercentage ?? ''}
-                            onChange={(e) => handleInsuranceChange(quote.id, e.target.value)}
-                            className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent bg-white text-gray-900 relative z-10"
-                            placeholder="0"
-                          />
-                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <div className="inline-flex items-center gap-1 mt-2">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.1"
+                              value={quote.insurancePercentage ?? ''}
+                              onChange={(e) => handleInsuranceChange(quote.id, e.target.value)}
+                              inputMode="decimal"
+                              className="w-[8ch] text-center px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent bg-white text-gray-900"
+                              placeholder="0"
+                            />
                             <span className="text-gray-500 text-sm">%</span>
                           </div>
                         </div>
