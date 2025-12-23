@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { QuoteData } from '@/types/quote';
 
 interface QuoteSetupSectionProps {
@@ -8,6 +9,7 @@ interface QuoteSetupSectionProps {
   onUpdateCompanyName: (quoteId: string, companyName: string) => void;
   onUpdateBaseCost: (quoteId: string, baseCost: number | null) => void;
   onClearAll: () => void;
+  onExtractWithAI?: (quoteId: string) => void;
 }
 
 const QuoteSetupSection: React.FC<QuoteSetupSectionProps> = ({
@@ -16,7 +18,8 @@ const QuoteSetupSection: React.FC<QuoteSetupSectionProps> = ({
   onRemoveQuote,
   onUpdateCompanyName,
   onUpdateBaseCost,
-  onClearAll
+  onClearAll,
+  onExtractWithAI
 }) => {
   const handleBaseCostChange = (quoteId: string, value: string) => {
     const numericValue = value === '' ? null : parseFloat(value);
@@ -26,7 +29,6 @@ const QuoteSetupSection: React.FC<QuoteSetupSectionProps> = ({
   };
 
   const nonArpinQuotes = quotes.filter(q => q.id !== 'arpin-quote');
-  const hasArpin = quotes.some(q => q.id === 'arpin-quote');
 
   return (
     <div className="border-b border-gray-200">
@@ -68,7 +70,7 @@ const QuoteSetupSection: React.FC<QuoteSetupSectionProps> = ({
       {/* Quote Setup Cards */}
       <div className="p-4 mb-4">
         <div className="overflow-x-auto horizontal-scroll">
-          <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(280px, 1fr))` }}>
+          <div className="grid gap-4 items-stretch" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(280px, 1fr))` }}>
             {quotes.map((quote) => {
               const isArpin = quote.id === 'arpin-quote';
               const displayIndex = isArpin ? null : nonArpinQuotes.findIndex(q => q.id === quote.id) + 1;
@@ -76,100 +78,127 @@ const QuoteSetupSection: React.FC<QuoteSetupSectionProps> = ({
               return (
                 <div 
                   key={quote.id} 
-                  className={`rounded-lg border-2 p-3 transition-colors ${
+                  className={`rounded-lg border-2 p-3 transition-colors flex flex-col h-full ${
                     isArpin 
                       ? 'bg-blue-50 border-[var(--arpin-primary-blue)]' 
                       : 'bg-gray-50 border-gray-200 hover:border-[var(--arpin-light-blue)]'
                   }`}
                 >
-                  {/* Card Header */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-2">
-                      <div className={`w-3 h-3 rounded-full ${
-                        isArpin ? 'bg-[var(--arpin-primary-blue)]' : 'bg-gray-400'
-                      }`}></div>
-                      <span className={`text-sm text-gray-600 ${isArpin ? 'font-bold' : 'font-medium'}`}>
-                        {isArpin ? 'Arpin Quote' : `Quote ${displayIndex}`}
-                      </span>
+                  {/* Top Section */}
+                  <div className="flex-shrink-0">
+                    {/* Card Header */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-3 h-3 rounded-full ${
+                          isArpin ? 'bg-[var(--arpin-primary-blue)]' : 'bg-gray-400'
+                        }`}></div>
+                        <span className={`text-sm text-gray-600 ${isArpin ? 'font-bold' : 'font-medium'}`}>
+                          {isArpin ? 'Arpin Quote' : `Quote ${displayIndex}`}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {/* Remove Button */}
+                        {!isArpin && nonArpinQuotes.length > 2 && (
+                          <button
+                            onClick={() => onRemoveQuote(quote.id)}
+                            className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded hover:bg-gray-100"
+                            title="Remove quote"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    {!isArpin && nonArpinQuotes.length > 2 && (
-                      <button
-                        onClick={() => onRemoveQuote(quote.id)}
-                        className="text-gray-400 hover:text-red-500 transition-colors"
-                        title="Remove quote"
+
+                    {/* Company Name Input */}
+                    <div className="mb-3">
+                      {isArpin ? (
+                        <div className="w-full px-2 py-1.5 flex items-center">
+                          <Image 
+                            src="/arpin-logo.webp" 
+                            alt="Arpin International" 
+                            width={120}
+                            height={32}
+                            className="h-8 w-auto"
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Company Name
+                          </label>
+                          <input
+                            type="text"
+                            value={quote.companyName}
+                            onChange={(e) => onUpdateCompanyName(quote.id, e.target.value)}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent bg-white text-gray-900"
+                            placeholder="Enter company name"
+                          />
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bottom Section - Aligned to bottom */}
+                  <div className="flex-grow flex flex-col justify-end mt-auto">
+                    {/* Thin Divider Line */}
+                    <div className="my-3">
+                      <div className="w-full h-px bg-gray-200"></div>
+                    </div>
+
+                    {/* Base Cost Input */}
+                    <div className="mb-3">
+                      <label 
+                        htmlFor={`base-cost-${quote.id}`}
+                        className="block text-xs font-medium text-gray-700 mb-1"
                       >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Company Name Input */}
-                  <div className="mb-3">
-                    {isArpin ? (
-                      <div className="w-full px-2 py-1.5 flex items-center">
-                        <img 
-                          src="/arpin-logo.webp" 
-                          alt="Arpin International" 
-                          className="h-8 w-auto"
-                        />
-                      </div>
-                    ) : (
-                      <>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Company Name
-                        </label>
+                        Base Moving Cost
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <span className="text-gray-500 text-sm font-medium">$</span>
+                        </div>
                         <input
-                          type="text"
-                          value={quote.companyName}
-                          onChange={(e) => onUpdateCompanyName(quote.id, e.target.value)}
-                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent bg-white"
-                          placeholder="Enter company name"
+                          id={`base-cost-${quote.id}`}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={quote.baseCost ?? ''}
+                          onChange={(e) => handleBaseCostChange(quote.id, e.target.value)}
+                          className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent bg-white text-gray-900 font-medium text-sm"
+                          placeholder="0.00"
                         />
-                      </>
+                      </div>
+                    </div>
+                    
+                    {/* Display formatted cost */}
+                    {quote.baseCost !== null && (
+                      <div className="text-xs text-gray-600 font-medium mb-3">
+                        {new Intl.NumberFormat('en-US', {
+                          style: 'currency',
+                          currency: 'USD'
+                        }).format(quote.baseCost)}
+                      </div>
+                    )}
+                    
+                    {/* AI Extraction Button - Bottom Right */}
+                    {onExtractWithAI && (
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => onExtractWithAI(quote.id)}
+                          className="inline-flex items-center px-3 py-2 bg-[var(--arpin-primary-blue)] text-white text-xs font-semibold rounded-md shadow-sm hover:shadow-md hover:bg-[var(--arpin-medium-blue)] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-[var(--arpin-primary-blue)]"
+                          title="Extract quote data from document using AI"
+                        >
+                          <svg className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                          </svg>
+                          <span>Extract with AI</span>
+                        </button>
+                      </div>
                     )}
                   </div>
-
-                  {/* Thin Divider Line */}
-                  <div className="my-3">
-                    <div className="w-full h-px bg-gray-200"></div>
-                  </div>
-
-                  {/* Base Cost Input */}
-                  <div className="mb-3">
-                    <label 
-                      htmlFor={`base-cost-${quote.id}`}
-                      className="block text-xs font-medium text-gray-700 mb-1"
-                    >
-                      Base Moving Cost
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span className="text-gray-500 text-sm font-medium">$</span>
-                      </div>
-                      <input
-                        id={`base-cost-${quote.id}`}
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={quote.baseCost ?? ''}
-                        onChange={(e) => handleBaseCostChange(quote.id, e.target.value)}
-                        className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent bg-white text-gray-900 font-medium text-sm"
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Display formatted cost */}
-                  {quote.baseCost !== null && (
-                    <div className="text-xs text-gray-600 font-medium">
-                      {new Intl.NumberFormat('en-US', {
-                        style: 'currency',
-                        currency: 'USD'
-                      }).format(quote.baseCost)}
-                    </div>
-                  )}
                 </div>
               );
             })}

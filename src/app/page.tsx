@@ -2,12 +2,17 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { QuoteData, DEFAULT_SERVICE_ITEMS, CalculatedMetrics } from '@/types/quote';
+import { ExtractedQuoteData } from '@/types/extraction';
+import { convertToQuoteData } from '@/types/extraction';
 import QuoteHeader from '@/components/QuoteHeader';
 import QuoteSetupSection from '@/components/QuoteSetupSection';
 import ServiceItemsSection from '@/components/ServiceItemsSection';
+import OtherCostsSection from '@/components/OtherCostsSection';
 import TotalQuoteEstimatesSection from '@/components/TotalQuoteEstimatesSection';
 import ComparisonMetricsSection from '@/components/ComparisonMetricsSection';
 import PriceComparisonAnalysis from '@/components/PriceComparisonAnalysis';
+import AIExtractionModal, { QuoteRedirectInfo } from '@/components/AIExtractionModal';
+import ToastNotification from '@/components/ToastNotification';
 
 
 const createDefaultQuote = (id: string, companyName: string): QuoteData => ({
@@ -48,6 +53,12 @@ export default function QuoteComparisonTool() {
     createDefaultQuote('quote-1', 'Company 1'),
     createDefaultQuote('quote-2', 'Company 2')
   ]);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'info' | 'warning' | 'success' | 'error';
+  } | null>(null);
 
   const calculations = useMemo(() => {
     const calc: Record<string, CalculatedMetrics> = {};
@@ -57,8 +68,9 @@ export default function QuoteComparisonTool() {
       const serviceItemsCost = quote.serviceItems
         .filter(item => !item.included)
         .reduce((sum, item) => sum + (item.cost || 0), 0);
+      const otherCosts = quote.other?.reduce((sum, item) => sum + item.value, 0) || 0;
       
-      const totalCost = baseCost + serviceItemsCost;
+      const totalCost = baseCost + serviceItemsCost + otherCosts;
       
       calc[quote.id] = {
         totalCost,
@@ -134,6 +146,72 @@ export default function QuoteComparisonTool() {
     updateQuote(quoteId, { insurancePercentage: percentage });
   }, [updateQuote]);
 
+  const updateOtherCost = useCallback((quoteId: string, costKey: string, value: number | null) => {
+    // Normalize key for comparison
+    const normalizeKey = (key: string): string => {
+      return key.toLowerCase().replace(/[\s_]+/g, '-').replace(/[^a-z0-9-]/g, '');
+    };
+    const normalizedCostKey = normalizeKey(costKey);
+    
+    setQuotes(prev => prev.map(quote => {
+      if (quote.id !== quoteId) return quote;
+      
+      const currentOther = quote.other || [];
+      // First try exact match, then try normalized match
+      let existingIndex = currentOther.findIndex(item => item.key === costKey);
+      if (existingIndex < 0) {
+        existingIndex = currentOther.findIndex(item => normalizeKey(item.key) === normalizedCostKey);
+      }
+      
+      let newOther: typeof currentOther;
+      
+      if (value === null) {
+        // If value is null (cleared), set to 0 to keep the item visible
+        value = 0;
+      }
+      
+      if (existingIndex >= 0) {
+        // Update existing item (use the existing key to preserve it)
+        newOther = currentOther.map((item, index) => 
+          index === existingIndex ? { ...item, value: value! } : item
+        );
+      } else {
+        // Add new item - we need to get label and description from another quote
+        // Try exact key match first, then normalized match
+        let sourceQuote = prev.find(q => q.other?.some(item => item.key === costKey));
+        let sourceItem = sourceQuote?.other?.find(item => item.key === costKey);
+        
+        if (!sourceItem) {
+          sourceQuote = prev.find(q => q.other?.some(item => normalizeKey(item.key) === normalizedCostKey));
+          sourceItem = sourceQuote?.other?.find(item => normalizeKey(item.key) === normalizedCostKey);
+        }
+        
+        if (sourceItem) {
+          // Use the source item's key to maintain consistency
+          newOther = [...currentOther, {
+            key: sourceItem.key,
+            label: sourceItem.label,
+            description: sourceItem.description,
+            value
+          }];
+        } else {
+          // Fallback if we can't find source (shouldn't happen, but be safe)
+          newOther = [...currentOther, {
+            key: costKey,
+            label: costKey,
+            description: '',
+            value
+          }];
+        }
+      }
+      
+      return {
+        ...quote,
+        other: newOther.length > 0 ? newOther : undefined
+      };
+    }));
+  }, []);
+
   const clearAllQuotes = useCallback(() => {
     setQuotes([
       createArpinQuote(), // Arpin first
@@ -145,6 +223,58 @@ export default function QuoteComparisonTool() {
   const handlePrint = useCallback(() => {
     window.print();
   }, []);
+
+  const handleExtractWithAI = useCallback((quoteId: string) => {
+    setSelectedQuoteId(quoteId);
+    setAiModalOpen(true);
+  }, []);
+
+  // Get the first unpopulated competitor quote ID
+  const getFirstUnpopulatedCompetitorId = useCallback((): string | null => {
+    // Find competitor quotes (non-Arpin) that haven't been populated
+    const unpopulatedCompetitor = quotes.find(q => 
+      q.id !== 'arpin-quote' && 
+      q.baseCost === null && 
+      q.serviceItems.every(item => !item.included && item.cost === null)
+    );
+    return unpopulatedCompetitor?.id || null;
+  }, [quotes]);
+
+  const handleAIExtract = useCallback((extractedData: ExtractedQuoteData, redirectInfo?: QuoteRedirectInfo) => {
+    if (!selectedQuoteId) return;
+
+    // Check if a competitor quote was detected in the Arpin column
+    if (redirectInfo?.originalTargetWasArpin && !extractedData.isArpinQuote) {
+      // Show notification that it's not an Arpin quote and was redirected
+      if (redirectInfo.wasRedirected) {
+        setNotification({
+          message: `This quote does not appear to be an Arpin quote. It has been populated in a competitor column instead. Detected company: ${redirectInfo.detectedCompanyName}`,
+          type: 'warning'
+        });
+      } else {
+        // No competitor column available, but still notify
+        setNotification({
+          message: `This quote does not appear to be an Arpin quote. Detected company: ${redirectInfo.detectedCompanyName}. Please use a competitor column for this quote.`,
+          type: 'warning'
+        });
+      }
+    }
+
+    // Determine which quote to update
+    const targetQuoteId = redirectInfo?.wasRedirected ? redirectInfo.targetQuoteId : selectedQuoteId;
+
+    // Convert extracted data to QuoteData format
+    const quoteData = convertToQuoteData(
+      extractedData,
+      targetQuoteId,
+      DEFAULT_SERVICE_ITEMS
+    );
+
+    // Update the quote with extracted data
+    setQuotes(prev => prev.map(quote => 
+      quote.id === targetQuoteId ? quoteData : quote
+    ));
+  }, [selectedQuoteId]);
 
   return (
     <div className="min-h-screen" style={{backgroundColor: '#FFFDF9'}}>
@@ -159,6 +289,7 @@ export default function QuoteComparisonTool() {
             onUpdateCompanyName={updateCompanyName}
             onUpdateBaseCost={updateBaseCost}
             onClearAll={clearAllQuotes}
+            onExtractWithAI={handleExtractWithAI}
           />
           
           {/* Print content starts here */}
@@ -167,6 +298,12 @@ export default function QuoteComparisonTool() {
               quotes={quotes}
               onUpdateServiceItem={updateServiceItem}
               onUpdateCompanyName={updateCompanyName}
+            />
+            
+            <OtherCostsSection
+              quotes={quotes}
+              onUpdateCompanyName={updateCompanyName}
+              onUpdateOtherCost={updateOtherCost}
             />
             
             <TotalQuoteEstimatesSection
@@ -202,6 +339,36 @@ export default function QuoteComparisonTool() {
             Print Comparison
           </button>
         </div>
+      </div>
+
+      {/* AI Extraction Modal */}
+      <AIExtractionModal
+        isOpen={aiModalOpen}
+        onClose={() => {
+          setAiModalOpen(false);
+          setSelectedQuoteId(null);
+        }}
+        onExtract={handleAIExtract}
+        quoteId={selectedQuoteId || ''}
+        isArpinColumn={selectedQuoteId === 'arpin-quote'}
+        getFirstUnpopulatedCompetitorId={getFirstUnpopulatedCompetitorId}
+      />
+
+      {/* Toast Notification */}
+      {notification && (
+        <ToastNotification
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification(null)}
+          duration={10000}
+        />
+      )}
+
+      {/* Disclaimer */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+        <p className="text-xs text-gray-500 text-center">
+          * While we strive for accurate cost categorization, our AI-generated allocations are provided for informational purposes only and cannot be guaranteed for accuracy or financial compliance.
+        </p>
       </div>
     </div>
   );

@@ -263,7 +263,7 @@ const PriceComparisonAnalysis: React.FC<PriceComparisonAnalysisProps> = ({ quote
                   const { labels, isBestPrice } = getQuoteLabels(quote);
                   const hasAnyLabel = labels.length > 0 || isBestPrice;
                   return (
-                    <td key={quote.id} className={`py-3 px-4 text-center ${
+                    <td key={quote.id} className={`py-3 px-4 text-center text-gray-900 ${
                       hasAnyLabel ? 'bg-green-100 border-l-2 border-r-2 border-[var(--arpin-green)]' : ''
                     }`}>
                       {quote.shipmentWeight !== null 
@@ -282,7 +282,7 @@ const PriceComparisonAnalysis: React.FC<PriceComparisonAnalysisProps> = ({ quote
                   const { labels, isBestPrice } = getQuoteLabels(quote);
                   const hasAnyLabel = labels.length > 0 || isBestPrice;
                   return (
-                    <td key={quote.id} className={`py-3 px-4 text-center ${
+                    <td key={quote.id} className={`py-3 px-4 text-center text-gray-900 ${
                       hasAnyLabel ? 'bg-green-100 border-l-2 border-r-2 border-[var(--arpin-green)]' : ''
                     }`}>
                       {quote.shipmentVolume !== null 
@@ -301,7 +301,7 @@ const PriceComparisonAnalysis: React.FC<PriceComparisonAnalysisProps> = ({ quote
                   const { labels, isBestPrice } = getQuoteLabels(quote);
                   const hasAnyLabel = labels.length > 0 || isBestPrice;
                   return (
-                    <td key={quote.id} className={`py-3 px-4 text-center ${
+                    <td key={quote.id} className={`py-3 px-4 text-center text-gray-900 ${
                       hasAnyLabel ? 'bg-green-100 border-l-2 border-r-2 border-[var(--arpin-green)]' : ''
                     }`}>
                       {quote.insurancePercentage !== null 
@@ -320,7 +320,7 @@ const PriceComparisonAnalysis: React.FC<PriceComparisonAnalysisProps> = ({ quote
                   const { labels, isBestPrice } = getQuoteLabels(quote);
                   const hasAnyLabel = labels.length > 0 || isBestPrice;
                   return (
-                    <td key={quote.id} className={`py-3 px-4 text-center ${
+                    <td key={quote.id} className={`py-3 px-4 text-center text-gray-900 ${
                       hasAnyLabel ? 'bg-green-100 border-l-2 border-r-2 border-[var(--arpin-green)] border-b-2' : ''
                     }`}>
                       {quote.transitTimeMin !== null && quote.transitTimeMax !== null 

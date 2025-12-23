@@ -6,6 +6,13 @@ export interface ServiceItem {
   cost: number | null;
 }
 
+export interface OtherCostItem {
+  key: string;
+  label: string;
+  description: string;
+  value: number;
+}
+
 export interface QuoteData {
   id: string;
   companyName: string;
@@ -16,6 +23,7 @@ export interface QuoteData {
   transitTimeMin: number | null;
   transitTimeMax: number | null;
   insurancePercentage: number | null;
+  other?: OtherCostItem[];
 }
 
 export interface CalculatedMetrics {

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import Image from 'next/image';
 import { QuoteData } from '@/types/quote';
 
@@ -57,12 +57,12 @@ const ServiceItemsSection: React.FC<ServiceItemsSectionProps> = ({
     <div className="border-b border-gray-200">
       {/* Horizontal Scroll Container */}
       <div className="overflow-x-auto overflow-y-hidden">
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse table-fixed">
           {/* Table Header */}
           <thead>
             <tr>
               {/* Service Items Header */}
-              <th className="bg-[var(--arpin-primary-blue)] text-white text-left px-6 py-4 font-medium text-sm border-r border-gray-300">
+              <th className="bg-[var(--arpin-primary-blue)] text-white text-left px-6 py-4 font-medium text-sm border-r border-gray-300" style={{ width: '45%' }}>
                 <div>
                   <div className="font-semibold font-lato">Service Items</div>
                   <div className="text-xs text-gray-100 mt-1 font-normal">
@@ -112,7 +112,7 @@ const ServiceItemsSection: React.FC<ServiceItemsSectionProps> = ({
             {quotes[0]?.serviceItems.map((serviceTemplate, rowIndex) => (
               <tr key={serviceTemplate.id} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                 {/* Service Item Description */}
-                <td className="px-6 py-4 border-r border-gray-300">
+                <td className="px-6 py-4 border-r border-gray-300" style={{ width: '45%' }}>
                   <div>
                     <div className="flex items-center">
                       <h3 className="font-medium text-gray-900 text-sm">

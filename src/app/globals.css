@@ -152,6 +152,11 @@ body {
   background: var(--arpin-primary-blue);
 }
 
+/* Input text color - always dark text regardless of dark mode */
+input, select, textarea {
+  color: #171717;
+}
+
 /* Input focus styles */
 input:focus, select:focus, textarea:focus {
   outline: 2px solid var(--arpin-light-blue);
@@ -161,6 +166,41 @@ input:focus, select:focus, textarea:focus {
 /* Checkbox styles */
 input[type="checkbox"] {
   accent-color: var(--arpin-primary-blue);
+}
+
+/* AI Modal Animations */
+@keyframes scale-in {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.5s ease-out;
+}
+
+/* Toast Notification Animations */
+@keyframes slide-in-right {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
 }
 
 /* Print styles - Only show comparison content */
@@ -192,6 +232,12 @@ input[type="checkbox"] {
   /* Hide print button when printing */
   .print-button {
     display: none !important;
+  }
+  
+  /* Hide toast notifications when printing */
+  [role="alert"] {
+    display: none !important;
+    visibility: hidden !important;
   }
   
   /* Hide all tooltips during print */

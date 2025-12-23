@@ -90,8 +90,8 @@ const QuoteHeader: React.FC = () => {
             {/* Description */}
             <div className="max-w-3xl mx-auto">
               <p className="text-base text-gray-700">
-                Use Arpin&apos;s QuoteSmart™ to compare what&apos;s included in your moving estimate. Enter the 
-                companies you would like to compare to Arpin, check off the services they include, and see how 
+                Use Arpin&apos;s QuoteSmart™ to compare what&apos;s included in your moving estimate. Simply scan your 
+                estimates and let the AI tool help you find the best fit and value for you and your family. See how 
                 Arpin stands apart with transparency and full-service value.
               </p>
             </div>

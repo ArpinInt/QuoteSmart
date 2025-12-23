@@ -98,12 +98,19 @@ The application uses Arpin's complete brand palette:
    npm install
    ```
 
-3. **Start development server**:
+3. **Set up OpenAI API (for AI extraction feature)**:
+   
+   Create a `.env.local` file in the root directory:
+   ```bash
+   OPENAI_API_KEY=your-api-key-here
+   ```
+   
+4. **Start development server**:
    ```bash
    npm run dev
    ```
 
-4. **Open your browser**:
+5. **Open your browser**:
    Navigate to `http://localhost:3000`
 
 ### Available Scripts
