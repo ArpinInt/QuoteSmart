@@ -17,7 +17,7 @@ export interface ExtractedOtherItem {
   value: number;
 }
 
-export interface ExtractedQuoteData {
+export interface ExtractedQuotePayload {
   companyName: string;
   baseCost: number | null;
   serviceItems: ExtractedServiceItem[];
@@ -27,12 +27,26 @@ export interface ExtractedQuoteData {
   transitTimeMax: number | null;
   insurancePercentage: number | null;
   other?: ExtractedOtherItem[];
+}
+
+export interface AdditionalArpinQuoteData extends ExtractedQuotePayload {
+  /** Display label for the generated Arpin variant column */
+  companyName: string;
+  /** "air" for air-vs-sea, "container" for container-size pair documents */
+  variantType: 'air' | 'container';
+  /** For container variants, the smaller container size represented by this variant */
+  containerSizeFt?: number | null;
+}
+
+export interface ExtractedQuoteData extends ExtractedQuotePayload {
   /** Whether the quote is from Arpin International (true) or a competitor (false) */
   isArpinQuote: boolean;
   /** Original currency code (e.g., 'EUR', 'GBP', 'USD'). If null or 'USD', no conversion was needed. */
   originalCurrency: string | null;
   /** Exchange rate used for conversion (e.g., 1.08 for EUR to USD). If null, no conversion was needed. */
   exchangeRate: number | null;
+  /** Optional secondary Arpin quote extracted from the same document for supported dual-option scenarios */
+  additionalArpinQuote?: AdditionalArpinQuoteData;
 }
 
 /**
@@ -76,7 +90,7 @@ export function validateExtractedQuoteData(data: ExtractedQuoteData): boolean {
  * Converts extracted quote data to QuoteData format (adds id field)
  */
 export function convertToQuoteData(
-  extracted: ExtractedQuoteData, 
+  extracted: ExtractedQuotePayload,
   id: string,
   serviceItemTemplates: Array<{ id: string; name: string; subtext: string }>
 ): import('./quote').QuoteData {

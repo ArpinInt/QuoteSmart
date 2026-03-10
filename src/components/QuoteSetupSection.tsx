@@ -21,6 +21,10 @@ const QuoteSetupSection: React.FC<QuoteSetupSectionProps> = ({
   onClearAll,
   onExtractWithAI
 }) => {
+  const isPrimaryArpin = (quoteId: string): boolean => quoteId === 'arpin-quote';
+  const isArpinVariant = (quoteId: string): boolean => quoteId.startsWith('arpin-variant-');
+  const isArpinFamily = (quoteId: string): boolean => isPrimaryArpin(quoteId) || isArpinVariant(quoteId);
+
   const handleBaseCostChange = (quoteId: string, value: string) => {
     const numericValue = value === '' ? null : parseFloat(value);
     if (value === '' || (!isNaN(numericValue!) && numericValue! >= 0)) {
@@ -28,7 +32,7 @@ const QuoteSetupSection: React.FC<QuoteSetupSectionProps> = ({
     }
   };
 
-  const nonArpinQuotes = quotes.filter(q => q.id !== 'arpin-quote');
+  const competitorQuotes = quotes.filter(q => !isArpinFamily(q.id));
 
   return (
     <div className="border-b border-gray-200">
@@ -47,7 +51,7 @@ const QuoteSetupSection: React.FC<QuoteSetupSectionProps> = ({
                 </svg>
                 Clear All
               </button>
-              {nonArpinQuotes.length < 4 && (
+              {competitorQuotes.length < 4 && (
                 <button
                   onClick={onAddQuote}
                   className="inline-flex items-center px-3 py-1.5 border border-white text-sm font-medium rounded-md text-[var(--arpin-primary-blue)] bg-white hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-colors"
@@ -72,8 +76,9 @@ const QuoteSetupSection: React.FC<QuoteSetupSectionProps> = ({
         <div className="overflow-x-auto horizontal-scroll">
           <div className="grid gap-4 items-stretch" style={{ gridTemplateColumns: `repeat(${quotes.length}, minmax(280px, 1fr))` }}>
             {quotes.map((quote) => {
-              const isArpin = quote.id === 'arpin-quote';
-              const displayIndex = isArpin ? null : nonArpinQuotes.findIndex(q => q.id === quote.id) + 1;
+              const isArpin = isArpinFamily(quote.id);
+              const isDefaultArpin = isPrimaryArpin(quote.id);
+              const displayIndex = isArpin ? null : competitorQuotes.findIndex(q => q.id === quote.id) + 1;
               
               return (
                 <div 
@@ -93,12 +98,15 @@ const QuoteSetupSection: React.FC<QuoteSetupSectionProps> = ({
                           isArpin ? 'bg-[var(--arpin-primary-blue)]' : 'bg-gray-400'
                         }`}></div>
                         <span className={`text-sm text-gray-600 ${isArpin ? 'font-bold' : 'font-medium'}`}>
-                          {isArpin ? 'Arpin Quote' : `Quote ${displayIndex}`}
+                          {isArpin
+                            ? (isDefaultArpin ? 'Arpin Quote' : quote.companyName)
+                            : `Quote ${displayIndex}`
+                          }
                         </span>
                       </div>
                       <div className="flex items-center space-x-2">
                         {/* Remove Button */}
-                        {!isArpin && nonArpinQuotes.length > 2 && (
+                        {!isArpin && competitorQuotes.length > 2 && (
                           <button
                             onClick={() => onRemoveQuote(quote.id)}
                             className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded hover:bg-gray-100"
@@ -114,7 +122,7 @@ const QuoteSetupSection: React.FC<QuoteSetupSectionProps> = ({
 
                     {/* Company Name Input */}
                     <div className="mb-3">
-                      {isArpin ? (
+                      {isDefaultArpin ? (
                         <div className="w-full px-2 py-1.5 flex items-center">
                           <Image 
                             src="/arpin-logo.webp" 
@@ -123,6 +131,10 @@ const QuoteSetupSection: React.FC<QuoteSetupSectionProps> = ({
                             height={32}
                             className="h-8 w-auto"
                           />
+                        </div>
+                      ) : isArpin ? (
+                        <div className="w-full px-2 py-2 text-sm font-semibold text-[var(--arpin-primary-blue)] bg-white border border-[var(--arpin-light-blue)] rounded">
+                          {quote.companyName}
                         </div>
                       ) : (
                         <>
@@ -165,7 +177,7 @@ const QuoteSetupSection: React.FC<QuoteSetupSectionProps> = ({
                           type="number"
                           min="0"
                           step="0.01"
-                          value={quote.baseCost ?? ''}
+                          value={quote.baseCost != null && !isNaN(quote.baseCost) ? Number(quote.baseCost).toFixed(2) : ''}
                           onChange={(e) => handleBaseCostChange(quote.id, e.target.value)}
                           className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent bg-white text-gray-900 font-medium text-sm"
                           placeholder="0.00"

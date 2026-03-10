@@ -39,10 +39,32 @@ CRITICAL - CURRENCY DETECTION AND CONVERSION:
 
 EXTRACTION RULES:
 - companyName: Extract company name from header/letterhead
-- baseCost: Primary moving cost in USD (numeric, remove currency symbols, CONVERTED TO USD if original currency is not USD). IMPORTANT: If the document shows multiple shipping methods (e.g., air and sea), SUM all base costs together. For example, if there's a base cost for air shipment and a base cost for sea shipment, add them together to get the total baseCost. CRITICAL: All monetary values must be in USD after conversion.
+- baseCost: Primary moving cost in USD (numeric, remove currency symbols, CONVERTED TO USD if original currency is not USD). CRITICAL: All monetary values must be in USD after conversion.
   * CRITICAL: DO NOT include any costs, fees, or charges that appear in sections labeled "EXCLUSIONS", "NOT INCLUDED", "EXCLUDED", "NOT COVERED", or similar exclusionary language. These are explicitly excluded from the quote and should NOT be added to baseCost.
   * If a cost appears in an EXCLUSIONS section, it should be placed in the "other" array with a clear description indicating it is excluded, but it must NEVER be included in baseCost calculations.
   * CRITICAL: Service-related charges (DTHC, port charges, crating fees, storage costs, etc.) should NEVER be included in baseCost, even if they appear in the main quote section. These should be mapped to their respective service items instead. Only include the primary transportation/shipping cost in baseCost.
+- ARPIN DUAL-OPTION RULE (VERY IMPORTANT):
+  * This rule applies ONLY when isArpinQuote is true.
+  * Sometimes one Arpin document contains two quote options for the same shipment. In these specific cases, do NOT merge or sum both options.
+  * Use top-level fields as the default Arpin quote, and use additionalArpinQuote for the secondary Arpin quote.
+  * Supported dual-option scenarios:
+    1) Air vs Sea:
+       - Detect labels like "air" and "sea" (or clear equivalents).
+       - If both exist for the same shipment (weights/volumes usually equal or within ~10%), default/top-level must be SEA.
+       - additionalArpinQuote must be AIR with:
+         - companyName: "Arpin Air"
+         - variantType: "air"
+       - containerSizeFt should be null or omitted for air variants.
+    2) Container size variants (generalized):
+       - Detect two container sizes for the same shipment (e.g., 20/40, 30/40, 40/50, or similar variations such as "1x20", "1x40", "1 x 30", etc.).
+       - Determine the SMALLER size and the LARGER size numerically.
+       - Default/top-level must be the LARGER container size option.
+       - additionalArpinQuote must be the SMALLER container size option with:
+         - companyName: "Arpin <SMALLER_SIZE>ft" (example: "Arpin 30ft")
+         - variantType: "container"
+         - containerSizeFt: <SMALLER_SIZE as number>
+  * When additionalArpinQuote is present, each option must include its own associated costs only (base + service items + other).
+  * If none of these dual-option scenarios clearly applies, omit additionalArpinQuote.
 - serviceItems: MUST include all 8 items. For each:
   * origin-services: Packing/wrapping/loading at origin. IMPORTANT: Confirm this includes full pack and wrap along with loading.
   * crating: Custom crating services. IMPORTANT: Combine origin and destination crating if provided separately.

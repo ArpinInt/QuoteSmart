@@ -1,14 +1,13 @@
 import { generateObject } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
-import { ExtractedQuoteData, ExtractedOtherItem, REQUIRED_SERVICE_ITEM_IDS } from '@/types/extraction';
+import { AdditionalArpinQuoteData, ExtractedQuoteData, ExtractedOtherItem, ExtractedQuotePayload, REQUIRED_SERVICE_ITEM_IDS } from '@/types/extraction';
 import { createExtractionPrompt } from './prompts';
 import { getMimeTypeFromExtension } from './utils';
 
-// Zod schema matching ExtractedQuoteData interface
-const extractedQuoteDataSchema = z.object({
+const quotePayloadShape = {
   companyName: z.string().describe('The moving company name extracted from the quote document'),
-  baseCost: z.number().nullable().describe('Base moving cost (primary transportation fee) in USD, or null if not found. If multiple shipping methods are present (e.g., air and sea), sum all base costs together to get the total baseCost. All monetary values must be converted to USD if the original currency is not USD.'),
+  baseCost: z.number().nullable().describe('Base moving cost (primary transportation fee) in USD, or null if not found. Keep one option per quote object. Do not merge separate shipping options into a single baseCost.'),
   serviceItems: z.array(
     z.object({
       id: z.enum([
@@ -57,10 +56,23 @@ const extractedQuoteDataSchema = z.object({
       description: z.string().describe('A brief description of what this value represents'),
       value: z.number().describe('The numeric value in USD (remove currency symbols, convert to number, converted to USD if original currency is not USD)')
     })
-  ).optional().describe('Array of unmatched values that could not be matched with certainty to the standard fields. Include any costs, fees, or information found in the document that does not fit the standard extraction fields. All values must be numeric and in USD.'),
+  ).optional().describe('Array of unmatched values that could not be matched with certainty to the standard extraction fields. Include only numeric monetary values in USD.')
+};
+
+const additionalArpinQuoteSchema: z.ZodType<AdditionalArpinQuoteData> = z.object({
+  ...quotePayloadShape,
+  companyName: z.string().describe('Display name for the additional Arpin quote column (e.g., "Arpin Air", "Arpin 30ft")'),
+  variantType: z.enum(['air', 'container']).describe('Variant represented by the additional Arpin quote'),
+  containerSizeFt: z.number().nullable().optional().describe('For container variants, the smaller container size in feet (e.g., 20, 30, 40). Omit or set null for air variants.')
+});
+
+// Zod schema matching ExtractedQuoteData interface
+const extractedQuoteDataSchema = z.object({
+  ...quotePayloadShape,
   isArpinQuote: z.boolean().describe('Whether the quote is from Arpin International (true) or a competitor company (false). Look for Arpin branding, logos, letterhead, or company name variations like "Arpin International", "Arpin", "Arpin Van Lines", "Arpin Group". Set to false for all other companies.'),
   originalCurrency: z.string().nullable().describe('The 3-letter currency code used in the original document (e.g., "EUR", "GBP", "USD", "CAD", "JPY", "AUD", "CHF"). Set to "USD" if the document uses USD or no currency is clearly specified. Set to null if currency cannot be determined.'),
-  exchangeRate: z.number().nullable().describe('The exchange rate used to convert from originalCurrency to USD (e.g., 1.08 for EUR to USD). This is the rate from originalCurrency to USD. If originalCurrency is "USD" or null, set to null. Must be a positive number if originalCurrency is not "USD" or null.')
+  exchangeRate: z.number().nullable().describe('The exchange rate used to convert from originalCurrency to USD (e.g., 1.08 for EUR to USD). This is the rate from originalCurrency to USD. If originalCurrency is "USD" or null, set to null. Must be a positive number if originalCurrency is not "USD" or null.'),
+  additionalArpinQuote: additionalArpinQuoteSchema.optional().describe('Optional secondary Arpin quote extracted from the same document for supported dual-option scenarios.')
 });
 
 // Re-export constants from utils for server-side use
@@ -84,7 +96,7 @@ export { isSupportedMimeType, isSupportedExtension, getMimeTypeFromExtension } f
  * 1. Strong keyword matches (total, sum, etc.)
  * 2. Grand total matches (baseCost + services + all other costs)
  */
-function filterOutTotals(data: ExtractedQuoteData): ExtractedQuoteData {
+function filterOutTotalsFromPayload<T extends ExtractedQuotePayload>(data: T): T {
   if (!data.other || data.other.length === 0) {
     return data;
   }
@@ -132,15 +144,15 @@ function filterOutTotals(data: ExtractedQuoteData): ExtractedQuoteData {
   return {
     ...data,
     other: filteredOther.length > 0 ? filteredOther : undefined
-  };
+  } as T;
 }
 
 /**
- * Consolidates base costs from the "other" array into the main baseCost.
- * If multiple shipping methods have base costs (e.g., air and sea), they should be summed.
+ * Consolidates fragmented base-cost items from the "other" array into baseCost.
+ * This is intended for line-item cleanup within a single quote option.
  * IMPORTANT: Excludes items that are marked as exclusions or appear in EXCLUSIONS sections.
  */
-function consolidateBaseCosts(data: ExtractedQuoteData): ExtractedQuoteData {
+function consolidateBaseCosts<T extends ExtractedQuotePayload>(data: T): T {
   if (!data.other || data.other.length === 0) {
     return data;
   }
@@ -236,7 +248,7 @@ function consolidateBaseCosts(data: ExtractedQuoteData): ExtractedQuoteData {
       ...data,
       baseCost: newBaseCost,
       other: remainingOther.length > 0 ? remainingOther : undefined
-    };
+    } as T;
   }
 
   return data;
@@ -285,7 +297,7 @@ export async function extractQuoteData(options: {
   }
 
   // Force GPT-4o model
-  const modelName = 'gpt-4o';
+  const modelName = 'gpt-5.2';
 
   // Create prompt text
   const promptText = createExtractionPrompt(documentText);
@@ -378,13 +390,15 @@ export async function extractQuoteData(options: {
       object = result.object;
     }
     
-    // Consolidate base costs from "other" array (e.g., air + sea base costs)
-    const consolidatedObject = consolidateBaseCosts(object);
-    
-    // Filter out totals from the "other" array to prevent double-counting
-    const filteredObject = filterOutTotals(consolidatedObject);
-    
-    return filteredObject;
+    const normalizedMain = filterOutTotalsFromPayload(consolidateBaseCosts(object));
+    const normalizedAdditional = normalizedMain.additionalArpinQuote
+      ? filterOutTotalsFromPayload(consolidateBaseCosts(normalizedMain.additionalArpinQuote))
+      : undefined;
+
+    return {
+      ...normalizedMain,
+      additionalArpinQuote: normalizedAdditional
+    };
   } catch (error: unknown) {
     // Enhanced error handling for API key and quota issues
     const errorMsg = (error && typeof error === 'object' && 'message' in error) 

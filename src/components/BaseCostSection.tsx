@@ -142,7 +142,7 @@ const QuoteSetupSection: React.FC<QuoteSetupSectionProps> = ({
                         type="number"
                         min="0"
                         step="0.01"
-                        value={quote.baseCost ?? ''}
+                        value={quote.baseCost != null && !isNaN(quote.baseCost) ? Number(quote.baseCost).toFixed(2) : ''}
                         onChange={(e) => handleBaseCostChange(quote.id, e.target.value)}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent bg-white text-gray-900 font-medium text-lg"
                         placeholder="0.00"

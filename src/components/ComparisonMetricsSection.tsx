@@ -126,7 +126,7 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
                             type="number"
                             min="0"
                             step="0.1"
-                            value={quote.shipmentVolume ?? ''}
+                            value={quote.shipmentVolume != null && !isNaN(quote.shipmentVolume) ? Number(quote.shipmentVolume).toFixed(2) : ''}
                             onChange={(e) => handleShipmentDetailChange(quote.id, 'shipmentVolume', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent bg-white text-gray-900 relative z-10"
                             placeholder="0.0"
@@ -354,7 +354,7 @@ const ComparisonMetricsSection: React.FC<ComparisonMetricsSectionProps> = ({
                             min="0"
                             max="100"
                             step="0.1"
-                            value={quote.insurancePercentage ?? ''}
+                            value={quote.insurancePercentage != null && !isNaN(quote.insurancePercentage) ? Number(quote.insurancePercentage).toFixed(2) : ''}
                             onChange={(e) => handleInsuranceChange(quote.id, e.target.value)}
                             className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent bg-white text-gray-900 relative z-10"
                             placeholder="0"

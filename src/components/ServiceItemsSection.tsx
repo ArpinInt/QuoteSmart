@@ -35,6 +35,11 @@ const ServiceItemsSection: React.FC<ServiceItemsSectionProps> = ({
   onUpdateServiceItem,
   onUpdateCompanyName
 }) => {
+  const isPrimaryArpin = (quoteId: string): boolean => quoteId === 'arpin-quote';
+  const isArpinVariant = (quoteId: string): boolean => quoteId.startsWith('arpin-variant-');
+  const isArpinFamily = (quoteId: string): boolean => isPrimaryArpin(quoteId) || isArpinVariant(quoteId);
+  const competitorQuotes = quotes.filter(q => !isArpinFamily(q.id));
+
   const handleIncludedChange = (quoteId: string, serviceId: string, included: boolean) => {
     const cost = included ? null : 0;
     onUpdateServiceItem(quoteId, serviceId, included, cost);
@@ -72,14 +77,16 @@ const ServiceItemsSection: React.FC<ServiceItemsSectionProps> = ({
               </th>
               
               {/* Quote Headers */}
-              {quotes.map((quote, index) => {
-                const isArpin = quote.id === 'arpin-quote';
+              {quotes.map((quote) => {
+                const isArpin = isArpinFamily(quote.id);
+                const isDefaultArpin = isPrimaryArpin(quote.id);
+                const competitorIndex = competitorQuotes.findIndex(q => q.id === quote.id) + 1;
                 return (
                   <th 
                     key={quote.id} 
                     className={`${isArpin ? 'bg-[var(--arpin-primary-blue)]' : 'bg-[var(--arpin-medium-blue)]'} text-white text-center px-4 py-4 font-medium text-sm border-r border-gray-300 min-w-[150px]`}
                   >
-                    {isArpin ? (
+                    {isDefaultArpin ? (
                       <div className="flex flex-col items-center">
                         <Image
                           src="/arpin-logo-white.png"
@@ -89,9 +96,11 @@ const ServiceItemsSection: React.FC<ServiceItemsSectionProps> = ({
                           className="h-10 w-auto"
                         />
                       </div>
+                    ) : isArpin ? (
+                      <div className="font-semibold text-base font-lato">{quote.companyName}</div>
                     ) : (
                       <>
-                        <div className="font-semibold text-base font-lato">Comparison {index}</div>
+                        <div className="font-semibold text-base font-lato">Comparison {competitorIndex}</div>
                         <input
                           type="text"
                           value={quote.companyName}
@@ -129,7 +138,7 @@ const ServiceItemsSection: React.FC<ServiceItemsSectionProps> = ({
                 {/* Quote Columns */}
                 {quotes.map((quote) => {
                   const serviceItem = getServiceItemForQuote(quote, serviceTemplate.id);
-                  const isArpin = quote.id === 'arpin-quote';
+                  const isArpin = isArpinFamily(quote.id);
                   if (!serviceItem) return null;
 
                   return (
@@ -157,7 +166,7 @@ const ServiceItemsSection: React.FC<ServiceItemsSectionProps> = ({
                                 type="number"
                                 min="0"
                                 step="0.01"
-                                value={serviceItem.cost ?? ''}
+                                value={serviceItem.cost != null && !isNaN(serviceItem.cost) ? Number(serviceItem.cost).toFixed(2) : ''}
                                 onChange={(e) => handleCostChange(quote.id, serviceTemplate.id, e.target.value)}
                                 className="w-full pl-6 pr-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-[var(--arpin-primary-blue)] focus:border-transparent"
                                 placeholder="0.00"

@@ -15,6 +15,42 @@ import AIExtractionModal, { QuoteRedirectInfo } from '@/components/AIExtractionM
 import ToastNotification from '@/components/ToastNotification';
 
 
+const PRIMARY_ARPIN_ID = 'arpin-quote';
+const ARPIN_VARIANT_PREFIX = 'arpin-variant-';
+
+const isArpinFamilyQuote = (quoteId: string): boolean =>
+  quoteId === PRIMARY_ARPIN_ID || quoteId.startsWith(ARPIN_VARIANT_PREFIX);
+
+const isCompetitorQuote = (quoteId: string): boolean => !isArpinFamilyQuote(quoteId);
+
+const sanitizeContainerSize = (value: unknown): number | null => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  const normalized = Math.round(value);
+  return normalized > 0 ? normalized : null;
+};
+
+const getArpinVariantId = (
+  variantType: 'air' | 'container',
+  containerSizeFt?: number | null
+): string => {
+  if (variantType === 'container') {
+    const safeSize = sanitizeContainerSize(containerSizeFt);
+    return `${ARPIN_VARIANT_PREFIX}container-${safeSize ?? 'small'}`;
+  }
+  return `${ARPIN_VARIANT_PREFIX}air`;
+};
+
+const getArpinVariantLabel = (
+  variantType: 'air' | 'container',
+  containerSizeFt?: number | null,
+  fallbackName?: string
+): string => {
+  if (variantType === 'air') return 'Arpin Air';
+  const safeSize = sanitizeContainerSize(containerSizeFt);
+  if (safeSize !== null) return `Arpin ${safeSize}ft`;
+  return fallbackName?.trim() || 'Arpin Container';
+};
+
 const createDefaultQuote = (id: string, companyName: string): QuoteData => ({
   id,
   companyName,
@@ -32,7 +68,7 @@ const createDefaultQuote = (id: string, companyName: string): QuoteData => ({
 });
 
 const createArpinQuote = (): QuoteData => ({
-  id: 'arpin-quote',
+  id: PRIMARY_ARPIN_ID,
   companyName: 'Arpin International',
   baseCost: null,
   serviceItems: DEFAULT_SERVICE_ITEMS.map(item => ({
@@ -83,23 +119,24 @@ export default function QuoteComparisonTool() {
   }, [quotes]);
 
   const addQuote = useCallback(() => {
-    const nonArpinQuotes = quotes.filter(q => q.id !== 'arpin-quote');
-    if (nonArpinQuotes.length < 4) { // Allow up to 4 non-Arpin quotes + Arpin
+    const nonArpinQuotes = quotes.filter(q => isCompetitorQuote(q.id));
+    if (nonArpinQuotes.length < 4) { // Allow up to 4 competitor quotes
       const newId = `quote-${Date.now()}`;
       const newQuote = createDefaultQuote(newId, `Company ${nonArpinQuotes.length + 1}`);
       setQuotes(prev => {
-        const arpin = prev.find(q => q.id === 'arpin-quote');
-        const others = prev.filter(q => q.id !== 'arpin-quote');
-        return [arpin!, ...others, newQuote]; // Keep Arpin at the beginning
+        const arpin = prev.find(q => q.id === PRIMARY_ARPIN_ID);
+        const arpinVariants = prev.filter(q => q.id.startsWith(ARPIN_VARIANT_PREFIX));
+        const competitors = prev.filter(q => isCompetitorQuote(q.id));
+        return [arpin!, ...arpinVariants, ...competitors, newQuote];
       });
     }
   }, [quotes]);
 
   const removeQuote = useCallback((quoteId: string) => {
-    // Don't allow removing Arpin quote
-    if (quoteId === 'arpin-quote') return;
+    // Don't allow removing Arpin primary or Arpin generated variants
+    if (isArpinFamilyQuote(quoteId)) return;
     
-    const nonArpinQuotes = quotes.filter(q => q.id !== 'arpin-quote');
+    const nonArpinQuotes = quotes.filter(q => isCompetitorQuote(q.id));
     if (nonArpinQuotes.length > 2) {
       setQuotes(prev => prev.filter(quote => quote.id !== quoteId));
     }
@@ -112,8 +149,8 @@ export default function QuoteComparisonTool() {
   }, []);
 
   const updateCompanyName = useCallback((quoteId: string, companyName: string) => {
-    // Don't allow changing Arpin's name
-    if (quoteId === 'arpin-quote') return;
+    // Don't allow changing Arpin or generated Arpin variant names
+    if (isArpinFamilyQuote(quoteId)) return;
     updateQuote(quoteId, { companyName });
   }, [updateQuote]);
 
@@ -233,7 +270,7 @@ export default function QuoteComparisonTool() {
   const getFirstUnpopulatedCompetitorId = useCallback((): string | null => {
     // Find competitor quotes (non-Arpin) that haven't been populated
     const unpopulatedCompetitor = quotes.find(q => 
-      q.id !== 'arpin-quote' && 
+      isCompetitorQuote(q.id) &&
       q.baseCost === null && 
       q.serviceItems.every(item => !item.included && item.cost === null)
     );
@@ -263,17 +300,69 @@ export default function QuoteComparisonTool() {
     // Determine which quote to update
     const targetQuoteId = redirectInfo?.wasRedirected ? redirectInfo.targetQuoteId : selectedQuoteId;
 
-    // Convert extracted data to QuoteData format
-    const quoteData = convertToQuoteData(
-      extractedData,
-      targetQuoteId,
-      DEFAULT_SERVICE_ITEMS
-    );
+    const quoteData = convertToQuoteData(extractedData, targetQuoteId, DEFAULT_SERVICE_ITEMS);
 
-    // Update the quote with extracted data
-    setQuotes(prev => prev.map(quote => 
-      quote.id === targetQuoteId ? quoteData : quote
-    ));
+    setQuotes(prev => {
+      const updatedQuotes = prev.map(quote => (quote.id === targetQuoteId ? quoteData : quote));
+
+      const shouldCreateArpinVariant =
+        targetQuoteId === PRIMARY_ARPIN_ID &&
+        extractedData.isArpinQuote &&
+        !!extractedData.additionalArpinQuote;
+
+      if (!shouldCreateArpinVariant || !extractedData.additionalArpinQuote) {
+        if (targetQuoteId === PRIMARY_ARPIN_ID && extractedData.isArpinQuote) {
+          const primaryArpin = updatedQuotes.find(q => q.id === PRIMARY_ARPIN_ID);
+          const competitors = updatedQuotes.filter(q => isCompetitorQuote(q.id));
+          return [primaryArpin!, ...competitors];
+        }
+        return updatedQuotes;
+      }
+
+      const variantId = getArpinVariantId(
+        extractedData.additionalArpinQuote.variantType,
+        extractedData.additionalArpinQuote.containerSizeFt
+      );
+      const variantQuoteData = convertToQuoteData(
+        extractedData.additionalArpinQuote,
+        variantId,
+        DEFAULT_SERVICE_ITEMS
+      );
+
+      const variantLabel = getArpinVariantLabel(
+        extractedData.additionalArpinQuote.variantType,
+        extractedData.additionalArpinQuote.containerSizeFt,
+        extractedData.additionalArpinQuote.companyName
+      );
+
+      const quoteWithLabel: QuoteData = {
+        ...variantQuoteData,
+        companyName: variantLabel
+      };
+
+      const withoutExistingVariant = updatedQuotes.filter(q => q.id !== variantId);
+      const primaryArpin = withoutExistingVariant.find(q => q.id === PRIMARY_ARPIN_ID);
+      const arpinVariants = withoutExistingVariant.filter(q => q.id.startsWith(ARPIN_VARIANT_PREFIX));
+      const competitors = withoutExistingVariant.filter(q => isCompetitorQuote(q.id));
+      const otherVariants = arpinVariants.filter(q => q.id !== variantId);
+
+      return [primaryArpin!, quoteWithLabel, ...otherVariants, ...competitors];
+    });
+
+    if (
+      targetQuoteId === PRIMARY_ARPIN_ID &&
+      extractedData.isArpinQuote &&
+      extractedData.additionalArpinQuote
+    ) {
+      setNotification({
+        message: `Detected two Arpin options in one document. Added "${getArpinVariantLabel(
+          extractedData.additionalArpinQuote.variantType,
+          extractedData.additionalArpinQuote.containerSizeFt,
+          extractedData.additionalArpinQuote.companyName
+        )}" as an extra Arpin column.`,
+        type: 'info'
+      });
+    }
   }, [selectedQuoteId]);
 
   return (
@@ -350,7 +439,7 @@ export default function QuoteComparisonTool() {
         }}
         onExtract={handleAIExtract}
         quoteId={selectedQuoteId || ''}
-        isArpinColumn={selectedQuoteId === 'arpin-quote'}
+        isArpinColumn={selectedQuoteId === PRIMARY_ARPIN_ID}
         getFirstUnpopulatedCompetitorId={getFirstUnpopulatedCompetitorId}
       />
 
