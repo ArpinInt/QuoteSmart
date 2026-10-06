@@ -21,6 +21,8 @@ interface AIExtractionModalProps {
   isArpinColumn?: boolean;
   /** Callback to find the first unpopulated competitor quote ID */
   getFirstUnpopulatedCompetitorId?: () => string | null;
+  /** Called with the raw uploaded file after a successful extraction (fire-and-forget capture). */
+  onDocumentUploaded?: (file: File) => void;
 }
 
 type ProcessingState = 'idle' | 'uploading' | 'processing' | 'success' | 'redirected' | 'error';
@@ -31,7 +33,8 @@ const AIExtractionModal: React.FC<AIExtractionModalProps> = ({
   onExtract,
   quoteId,
   isArpinColumn = false,
-  getFirstUnpopulatedCompetitorId
+  getFirstUnpopulatedCompetitorId,
+  onDocumentUploaded
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [processingState, setProcessingState] = useState<ProcessingState>('idle');
@@ -245,6 +248,9 @@ const AIExtractionModal: React.FC<AIExtractionModalProps> = ({
 
       const extractedData: ExtractedQuoteData = await response.json();
 
+      // Fire-and-forget: also persist the source document to the capture backend.
+      onDocumentUploaded?.(file);
+
       // Check if user tried to upload a non-Arpin quote to the Arpin column
       let currentRedirectInfo: QuoteRedirectInfo | null = null;
       let targetQuoteId = quoteId;
@@ -306,7 +312,7 @@ const AIExtractionModal: React.FC<AIExtractionModalProps> = ({
       setError(friendlyError);
       setProcessingState('error');
     }
-  }, [file, onExtract, getUserFriendlyError, handleClose, quoteId, isArpinColumn, getFirstUnpopulatedCompetitorId]);
+  }, [file, onExtract, getUserFriendlyError, handleClose, quoteId, isArpinColumn, getFirstUnpopulatedCompetitorId, onDocumentUploaded]);
 
   const handleClickUpload = useCallback(() => {
     fileInputRef.current?.click();
