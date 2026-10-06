@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { QuoteData, DEFAULT_SERVICE_ITEMS, CalculatedMetrics } from '@/types/quote';
 import { ExtractedQuoteData } from '@/types/extraction';
 import { convertToQuoteData } from '@/types/extraction';
@@ -13,6 +13,7 @@ import ComparisonMetricsSection from '@/components/ComparisonMetricsSection';
 import PriceComparisonAnalysis from '@/components/PriceComparisonAnalysis';
 import AIExtractionModal, { QuoteRedirectInfo } from '@/components/AIExtractionModal';
 import ToastNotification from '@/components/ToastNotification';
+import { useSessionCapture } from '@/services/capture/useSessionCapture';
 
 
 const PRIMARY_ARPIN_ID = 'arpin-quote';
@@ -95,6 +96,7 @@ export default function QuoteComparisonTool() {
     message: string;
     type: 'info' | 'warning' | 'success' | 'error';
   } | null>(null);
+  const { capture, captureDocument } = useSessionCapture();
 
   const calculations = useMemo(() => {
     const calc: Record<string, CalculatedMetrics> = {};
@@ -117,6 +119,11 @@ export default function QuoteComparisonTool() {
     
     return calc;
   }, [quotes]);
+
+  // Fire-and-forget: capture the evolving comparison into the backend.
+  useEffect(() => {
+    capture(quotes, calculations);
+  }, [quotes, calculations, capture]);
 
   const addQuote = useCallback(() => {
     const nonArpinQuotes = quotes.filter(q => isCompetitorQuote(q.id));
@@ -441,6 +448,7 @@ export default function QuoteComparisonTool() {
         quoteId={selectedQuoteId || ''}
         isArpinColumn={selectedQuoteId === PRIMARY_ARPIN_ID}
         getFirstUnpopulatedCompetitorId={getFirstUnpopulatedCompetitorId}
+        onDocumentUploaded={captureDocument}
       />
 
       {/* Toast Notification */}
