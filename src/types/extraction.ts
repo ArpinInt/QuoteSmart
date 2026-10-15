@@ -27,14 +27,22 @@ export interface ExtractedQuotePayload {
   transitTimeMax: number | null;
   insurancePercentage: number | null;
   other?: ExtractedOtherItem[];
+  /** The document's own total for this quote option in USD (e.g. "Estimated Sea Loose Charges (USD)"); null if none is stated */
+  quotedTotal?: number | null;
 }
+
+/**
+ * How an Arpin option ships the goods: "air"; "liftvan" (sea, in liftvans);
+ * "container" (sea, in a full container, e.g. sea loose in 1x20'); "sea" when
+ * the document gives no more detail.
+ */
+export type ArpinOptionType = 'air' | 'sea' | 'liftvan' | 'container';
 
 export interface AdditionalArpinQuoteData extends ExtractedQuotePayload {
   /** Display label for the generated Arpin variant column */
   companyName: string;
-  /** "air" for air-vs-sea, "container" for container-size pair documents */
-  variantType: 'air' | 'container';
-  /** For container variants, the smaller container size represented by this variant */
+  variantType: ArpinOptionType;
+  /** For container options, the container size in feet (e.g. 20, 40) */
   containerSizeFt?: number | null;
 }
 
@@ -45,8 +53,12 @@ export interface ExtractedQuoteData extends ExtractedQuotePayload {
   originalCurrency: string | null;
   /** Exchange rate used for conversion (e.g., 1.08 for EUR to USD). If null, no conversion was needed. */
   exchangeRate: number | null;
-  /** Optional secondary Arpin quote extracted from the same document for supported dual-option scenarios */
-  additionalArpinQuote?: AdditionalArpinQuoteData;
+  /** Arpin only: how the main option ships; labels its column when the document has several options */
+  variantType?: ArpinOptionType | null;
+  /** Arpin only: container size in feet of the main option, if it is a container option */
+  containerSizeFt?: number | null;
+  /** Arpin only: the other options priced in the same document, one column each */
+  additionalArpinQuotes?: AdditionalArpinQuoteData[];
 }
 
 /**

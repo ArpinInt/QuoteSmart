@@ -3,7 +3,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { QuoteData, DEFAULT_SERVICE_ITEMS, CalculatedMetrics } from '@/types/quote';
 import { ExtractedQuoteData } from '@/types/extraction';
-import { convertToQuoteData } from '@/types/extraction';
 import QuoteHeader from '@/components/QuoteHeader';
 import QuoteSetupSection from '@/components/QuoteSetupSection';
 import ServiceItemsSection from '@/components/ServiceItemsSection';
@@ -14,43 +13,15 @@ import PriceComparisonAnalysis from '@/components/PriceComparisonAnalysis';
 import AIExtractionModal, { QuoteRedirectInfo } from '@/components/AIExtractionModal';
 import ToastNotification from '@/components/ToastNotification';
 import { useSessionCapture } from '@/services/capture/useSessionCapture';
+import {
+  PRIMARY_ARPIN_ID,
+  ARPIN_VARIANT_PREFIX,
+  isArpinFamilyQuote,
+  isCompetitorQuote,
+  applyArpinExtraction,
+  buildArpinOptionColumns,
+} from '@/services/quotes/arpinOptions';
 
-
-const PRIMARY_ARPIN_ID = 'arpin-quote';
-const ARPIN_VARIANT_PREFIX = 'arpin-variant-';
-
-const isArpinFamilyQuote = (quoteId: string): boolean =>
-  quoteId === PRIMARY_ARPIN_ID || quoteId.startsWith(ARPIN_VARIANT_PREFIX);
-
-const isCompetitorQuote = (quoteId: string): boolean => !isArpinFamilyQuote(quoteId);
-
-const sanitizeContainerSize = (value: unknown): number | null => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
-  const normalized = Math.round(value);
-  return normalized > 0 ? normalized : null;
-};
-
-const getArpinVariantId = (
-  variantType: 'air' | 'container',
-  containerSizeFt?: number | null
-): string => {
-  if (variantType === 'container') {
-    const safeSize = sanitizeContainerSize(containerSizeFt);
-    return `${ARPIN_VARIANT_PREFIX}container-${safeSize ?? 'small'}`;
-  }
-  return `${ARPIN_VARIANT_PREFIX}air`;
-};
-
-const getArpinVariantLabel = (
-  variantType: 'air' | 'container',
-  containerSizeFt?: number | null,
-  fallbackName?: string
-): string => {
-  if (variantType === 'air') return 'Arpin Air';
-  const safeSize = sanitizeContainerSize(containerSizeFt);
-  if (safeSize !== null) return `Arpin ${safeSize}ft`;
-  return fallbackName?.trim() || 'Arpin Container';
-};
 
 const createDefaultQuote = (id: string, companyName: string): QuoteData => ({
   id,
@@ -307,68 +278,17 @@ export default function QuoteComparisonTool() {
     // Determine which quote to update
     const targetQuoteId = redirectInfo?.wasRedirected ? redirectInfo.targetQuoteId : selectedQuoteId;
 
-    const quoteData = convertToQuoteData(extractedData, targetQuoteId, DEFAULT_SERVICE_ITEMS);
+    setQuotes(prev => applyArpinExtraction(prev, extractedData, targetQuoteId));
 
-    setQuotes(prev => {
-      const updatedQuotes = prev.map(quote => (quote.id === targetQuoteId ? quoteData : quote));
-
-      const shouldCreateArpinVariant =
-        targetQuoteId === PRIMARY_ARPIN_ID &&
-        extractedData.isArpinQuote &&
-        !!extractedData.additionalArpinQuote;
-
-      if (!shouldCreateArpinVariant || !extractedData.additionalArpinQuote) {
-        if (targetQuoteId === PRIMARY_ARPIN_ID && extractedData.isArpinQuote) {
-          const primaryArpin = updatedQuotes.find(q => q.id === PRIMARY_ARPIN_ID);
-          const competitors = updatedQuotes.filter(q => isCompetitorQuote(q.id));
-          return [primaryArpin!, ...competitors];
-        }
-        return updatedQuotes;
+    if (targetQuoteId === PRIMARY_ARPIN_ID && extractedData.isArpinQuote) {
+      const { variants } = buildArpinOptionColumns(extractedData);
+      if (variants.length > 0) {
+        const labels = variants.map(variant => `"${variant.companyName}"`).join(', ');
+        setNotification({
+          message: `Detected ${variants.length + 1} Arpin options in one document. Added ${labels} as extra Arpin ${variants.length === 1 ? 'column' : 'columns'}.`,
+          type: 'info'
+        });
       }
-
-      const variantId = getArpinVariantId(
-        extractedData.additionalArpinQuote.variantType,
-        extractedData.additionalArpinQuote.containerSizeFt
-      );
-      const variantQuoteData = convertToQuoteData(
-        extractedData.additionalArpinQuote,
-        variantId,
-        DEFAULT_SERVICE_ITEMS
-      );
-
-      const variantLabel = getArpinVariantLabel(
-        extractedData.additionalArpinQuote.variantType,
-        extractedData.additionalArpinQuote.containerSizeFt,
-        extractedData.additionalArpinQuote.companyName
-      );
-
-      const quoteWithLabel: QuoteData = {
-        ...variantQuoteData,
-        companyName: variantLabel
-      };
-
-      const withoutExistingVariant = updatedQuotes.filter(q => q.id !== variantId);
-      const primaryArpin = withoutExistingVariant.find(q => q.id === PRIMARY_ARPIN_ID);
-      const arpinVariants = withoutExistingVariant.filter(q => q.id.startsWith(ARPIN_VARIANT_PREFIX));
-      const competitors = withoutExistingVariant.filter(q => isCompetitorQuote(q.id));
-      const otherVariants = arpinVariants.filter(q => q.id !== variantId);
-
-      return [primaryArpin!, quoteWithLabel, ...otherVariants, ...competitors];
-    });
-
-    if (
-      targetQuoteId === PRIMARY_ARPIN_ID &&
-      extractedData.isArpinQuote &&
-      extractedData.additionalArpinQuote
-    ) {
-      setNotification({
-        message: `Detected two Arpin options in one document. Added "${getArpinVariantLabel(
-          extractedData.additionalArpinQuote.variantType,
-          extractedData.additionalArpinQuote.containerSizeFt,
-          extractedData.additionalArpinQuote.companyName
-        )}" as an extra Arpin column.`,
-        type: 'info'
-      });
     }
   }, [selectedQuoteId]);
 

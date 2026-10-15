@@ -3,11 +3,12 @@ import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 import { AdditionalArpinQuoteData, ExtractedQuoteData, ExtractedOtherItem, ExtractedQuotePayload, REQUIRED_SERVICE_ITEM_IDS } from '@/types/extraction';
 import { createExtractionPrompt } from './prompts';
+import { normalizeArpinOptions } from './arpinOptions';
 import { getMimeTypeFromExtension } from './utils';
 
 const quotePayloadShape = {
   companyName: z.string().describe('The moving company name extracted from the quote document'),
-  baseCost: z.number().nullable().describe('Base moving cost (primary transportation fee) in USD, or null if not found. Keep one option per quote object. Do not merge separate shipping options into a single baseCost.'),
+  baseCost: z.number().nullable().describe('Base moving cost in USD, or null if not found. For competitor quotes: the primary transportation / door-to-door fee only. For Arpin quotes (isArpinQuote=true): this option\'s estimated total, i.e. the sum of every priced line in this option\'s pricing block (base cost, long carry, shuttle, parking permit, crating, SIT, ...). Keep one option per quote object: never merge or sum separate shipping options. All monetary values must be converted to USD if the original currency is not USD.'),
   serviceItems: z.array(
     z.object({
       id: z.enum([
@@ -28,8 +29,8 @@ const quotePayloadShape = {
         - destination-terminal-handling: DTHC/port charges (many competitors exclude DTHC, adding significant costs at destination port)
         - customs-clearance: Customs documentation and processing
         - delivery-services: Delivery/unpacking at destination (confirm includes unpacking)`),
-      included: z.boolean().describe('true if service is included in base cost, false if separate charge'),
-      cost: z.number().nullable().describe('Cost of service in USD if not included (null if included or not found). Must be converted to USD if original currency is not USD.')
+      included: z.boolean().describe('true if the service is part of the quoted total: listed as included in the base cost, or (Arpin quotes) itemized with a price and summed into the estimated total, even when annotated "if needed". false only if the service is a separate charge listed apart from the base price or is excluded.'),
+      cost: z.number().nullable().describe('Cost of the service in USD only when included is false and the document quotes a specific amount for this shipment (null if included or not found). Must be converted to USD if original currency is not USD.')
     })
   )
     .length(8, 'Must include exactly 8 service items')
@@ -56,14 +57,17 @@ const quotePayloadShape = {
       description: z.string().describe('A brief description of what this value represents'),
       value: z.number().describe('The numeric value in USD (remove currency symbols, convert to number, converted to USD if original currency is not USD)')
     })
-  ).optional().describe('Array of unmatched values that could not be matched with certainty to the standard extraction fields. Include only numeric monetary values in USD.')
+  ).optional().describe('Array of unmatched values that could not be matched with certainty to the standard extraction fields. Include only numeric monetary values in USD.'),
+  quotedTotal: z.number().nullable().describe('The document\'s own stated total for THIS quote option only, in USD (e.g., "Estimated Sea Loose Charges (USD)", "Estimated Total"). Copy the amount exactly as printed (converted to USD if needed); do not compute it. null if the document states no total for this option.')
 };
+
+const arpinOptionTypeSchema = z.enum(['air', 'sea', 'liftvan', 'container']).describe('How this Arpin option ships the goods: "air"; "liftvan" for sea shipments in liftvans; "container" for sea shipments in a full container (e.g., SEA LOOSE in 1x20\', FCL, 1x40\'); "sea" for any other sea option.');
 
 const additionalArpinQuoteSchema: z.ZodType<AdditionalArpinQuoteData> = z.object({
   ...quotePayloadShape,
-  companyName: z.string().describe('Display name for the additional Arpin quote column (e.g., "Arpin Air", "Arpin 30ft")'),
-  variantType: z.enum(['air', 'container']).describe('Variant represented by the additional Arpin quote'),
-  containerSizeFt: z.number().nullable().optional().describe('For container variants, the smaller container size in feet (e.g., 20, 30, 40). Omit or set null for air variants.')
+  companyName: z.string().describe('Display name for the additional Arpin quote column (e.g., "Arpin Air", "Arpin Liftvans", "Arpin 20ft")'),
+  variantType: arpinOptionTypeSchema,
+  containerSizeFt: z.number().nullable().optional().describe('For container options, the container size in feet (e.g., 20, 40). null for other options.')
 });
 
 // Zod schema matching ExtractedQuoteData interface
@@ -72,7 +76,9 @@ const extractedQuoteDataSchema = z.object({
   isArpinQuote: z.boolean().describe('Whether the quote is from Arpin International (true) or a competitor company (false). Look for Arpin branding, logos, letterhead, or company name variations like "Arpin International", "Arpin", "Arpin Van Lines", "Arpin Group". Set to false for all other companies.'),
   originalCurrency: z.string().nullable().describe('The 3-letter currency code used in the original document (e.g., "EUR", "GBP", "USD", "CAD", "JPY", "AUD", "CHF"). Set to "USD" if the document uses USD or no currency is clearly specified. Set to null if currency cannot be determined.'),
   exchangeRate: z.number().nullable().describe('The exchange rate used to convert from originalCurrency to USD (e.g., 1.08 for EUR to USD). This is the rate from originalCurrency to USD. If originalCurrency is "USD" or null, set to null. Must be a positive number if originalCurrency is not "USD" or null.'),
-  additionalArpinQuote: additionalArpinQuoteSchema.optional().describe('Optional secondary Arpin quote extracted from the same document for supported dual-option scenarios.')
+  variantType: arpinOptionTypeSchema.nullable().optional().describe('Arpin quotes only: how the top-level option ships the goods. null for competitor quotes.'),
+  containerSizeFt: z.number().nullable().optional().describe('Arpin quotes only: container size in feet of the top-level option, if it is a container option.'),
+  additionalArpinQuotes: z.array(additionalArpinQuoteSchema).optional().describe('Arpin quotes only: every other option priced in the same document, one entry per option, in document order. Omit when the document prices a single option.')
 });
 
 // Re-export constants from utils for server-side use
@@ -391,14 +397,14 @@ export async function extractQuoteData(options: {
     }
     
     const normalizedMain = filterOutTotalsFromPayload(consolidateBaseCosts(object));
-    const normalizedAdditional = normalizedMain.additionalArpinQuote
-      ? filterOutTotalsFromPayload(consolidateBaseCosts(normalizedMain.additionalArpinQuote))
-      : undefined;
+    const normalizedAdditional = normalizedMain.additionalArpinQuotes?.map(option =>
+      filterOutTotalsFromPayload(consolidateBaseCosts(option))
+    );
 
-    return {
+    return normalizeArpinOptions({
       ...normalizedMain,
-      additionalArpinQuote: normalizedAdditional
-    };
+      additionalArpinQuotes: normalizedAdditional
+    });
   } catch (error: unknown) {
     // Enhanced error handling for API key and quota issues
     const errorMsg = (error && typeof error === 'object' && 'message' in error) 
