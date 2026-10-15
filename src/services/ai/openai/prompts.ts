@@ -42,29 +42,21 @@ EXTRACTION RULES:
 - baseCost: Primary moving cost in USD (numeric, remove currency symbols, CONVERTED TO USD if original currency is not USD). CRITICAL: All monetary values must be in USD after conversion.
   * CRITICAL: DO NOT include any costs, fees, or charges that appear in sections labeled "EXCLUSIONS", "NOT INCLUDED", "EXCLUDED", "NOT COVERED", or similar exclusionary language. These are explicitly excluded from the quote and should NOT be added to baseCost.
   * If a cost appears in an EXCLUSIONS section, it should be placed in the "other" array with a clear description indicating it is excluded, but it must NEVER be included in baseCost calculations.
-  * CRITICAL: Service-related charges (DTHC, port charges, crating fees, storage costs, etc.) should NEVER be included in baseCost, even if they appear in the main quote section. These should be mapped to their respective service items instead. Only include the primary transportation/shipping cost in baseCost.
-- ARPIN DUAL-OPTION RULE (VERY IMPORTANT):
+  * CRITICAL (COMPETITOR quotes): Service-related charges (DTHC, port charges, crating fees, storage costs, etc.) should NEVER be included in baseCost, even if they appear in the main quote section. These should be mapped to their respective service items instead. Only include the primary transportation/shipping cost in baseCost.
+  * ARPIN quotes are the exception: each option's baseCost is that option's estimated total, which already contains every priced line of the option. See INCLUDED VS. SEPARATE CHARGES below.
+- quotedTotal: the document's own stated total for the quote option, copied exactly as printed (converted to USD if needed), e.g., "Estimated Sea Loose Charges (USD) $10,307.70" -> 10307.70. Never compute it. null if the document states no total for the option.
+- ARPIN OPTIONS RULE (VERY IMPORTANT):
   * This rule applies ONLY when isArpinQuote is true.
-  * Sometimes one Arpin document contains two quote options for the same shipment. In these specific cases, do NOT merge or sum both options.
-  * Use top-level fields as the default Arpin quote, and use additionalArpinQuote for the secondary Arpin quote.
-  * Supported dual-option scenarios:
-    1) Air vs Sea:
-       - Detect labels like "air" and "sea" (or clear equivalents).
-       - If both exist for the same shipment (weights/volumes usually equal or within ~10%), default/top-level must be SEA.
-       - additionalArpinQuote must be AIR with:
-         - companyName: "Arpin Air"
-         - variantType: "air"
-       - containerSizeFt should be null or omitted for air variants.
-    2) Container size variants (generalized):
-       - Detect two container sizes for the same shipment (e.g., 20/40, 30/40, 40/50, or similar variations such as "1x20", "1x40", "1 x 30", etc.).
-       - Determine the SMALLER size and the LARGER size numerically.
-       - Default/top-level must be the LARGER container size option.
-       - additionalArpinQuote must be the SMALLER container size option with:
-         - companyName: "Arpin <SMALLER_SIZE>ft" (example: "Arpin 30ft")
-         - variantType: "container"
-         - containerSizeFt: <SMALLER_SIZE as number>
-  * When additionalArpinQuote is present, each option must include its own associated costs only (base + service items + other).
-  * If none of these dual-option scenarios clearly applies, omit additionalArpinQuote.
+  * One Arpin document can price the same move as several alternative options. Each option has its own pricing block: a header with the mode and the estimated weight/volume (e.g., "AIR 1,660 NLBS. / 252 GCFT Door to Door", "SEA LIFTVANS 1,400 NLBS. / 215 GCFT", "SEA LOOSE 2,600 NLBS. / 385 CFT"), its own Ref number, its own priced lines and its own "Estimated ... Charges (USD)" total.
+  * Every such household-goods block is a separate option, even when the options show different weights or volumes (air chargeable weight, liftvans and loose containers are estimated differently). NEVER merge or sum two options.
+  * Put one option in the top-level fields and every other option in additionalArpinQuotes, one entry per option. Each option carries only its own block: its own baseCost, quotedTotal, service items, weight, volume and transit time.
+  * For every option, set variantType:
+    - "air" for air shipments.
+    - "liftvan" for sea shipments in liftvans.
+    - "container" for sea shipments in a full container, e.g., SEA LOOSE "in 1 x 20'", "1x40'", FCL. Set containerSizeFt to the container size in feet (20, 40, ...). Read the size from the block (e.g., "2600lbs in 1 x 20'", "6500 lbs hhgs only in 1x20").
+    - "sea" for any other sea option.
+  * A vehicle block (e.g., "AUTO/ Door to Door ... Estimated Auto Charges") is NOT a household-goods option: do not create an option for it and do not add its amount to any option.
+  * If the document prices a single option, omit additionalArpinQuotes.
 - serviceItems: MUST include all 8 items. For each:
   * origin-services: Packing/wrapping/loading at origin. IMPORTANT: Confirm this includes full pack and wrap along with loading.
   * crating: Custom crating services. IMPORTANT: Combine origin and destination crating if provided separately.
@@ -92,6 +84,22 @@ EXTRACTION RULES:
   * Extract ONLY the main insurance coverage percentage (e.g., "3.5% of declared value" → 3.5).
   * Do NOT extract secondary percentages like IPT (Insurance Premium Tax), tax rates, or "X% of premium" - these are not the main insurance percentage and should be ignored.
   * If multiple insurance percentages are mentioned, extract the primary one that represents coverage of declared value.
+
+INCLUDED VS. SEPARATE CHARGES - HOW TO DECIDE (read before setting included/cost):
+- First locate the document's own quoted total for each quote option (e.g., "Estimated ... Charges", "Estimated Total", "Total Estimate") and note which priced lines are summed into it.
+- ARPIN QUOTES (isArpinQuote = true): Arpin itemizes the pricing block of each option (BASE COST, LONG CARRY, SHUTTLE, PARKING PERMIT, 3RD PARTY SERVICE / CRATING, SIT, ...) and sums every priced line of that block into the option's "Estimated ... Charges (USD)". A priced line is therefore already INCLUDED in that option's total, even when annotated "if needed" or "if required": Arpin has priced it into the total, unlike competitors that list such items apart.
+  * baseCost of an option = that option's "Estimated ... Charges" total (the sum of ALL priced lines in its block), NOT only the line labeled "BASE COST".
+  * A service item is included:true ONLY in one of these two cases: (a) it has a priced line in the option's block, or (b) it is listed under BASE COST INCLUSIONS. There is no third case.
+  * A priced line in the pricing block wins over the generic BASE COST EXCLUSIONS text. Example: "SIT AT ORIGIN - if needed - monthly fee ... $1,000.00" summed into the estimated total -> storage-in-transit included:true, cost:null, even though the exclusions mention warehouse handling/storage-in-transit in general. The exclusions describe what would cost extra only when it was NOT already quoted in the block.
+  * A service with NO priced line that is NOT under BASE COST INCLUSIONS -> included:false, cost:null. Example: when the block has BASE COST, LONG CARRY, CRATING and SIT lines but no SHUTTLE or PARKING PERMIT line, shuttle-services and parking-permits are NOT included (they only appear under the "Abnormal access" exclusion). Never assume a service is included just because Arpin quotes are door-to-door.
+  * Priced lines that are not one of the 8 service items (e.g., long carry, elevator, warehouse handling) are already inside baseCost -> do NOT repeat them in "other".
+- COMPETITOR QUOTES (isArpinQuote = false) list accessorials apart from the base / door-to-door price:
+  * baseCost = the door-to-door / primary transportation price only.
+  * An accessorial listed with an amount apart from the base price (e.g., "Accessorials: Third party crating $436.26") -> included:false, cost:[amount]. It still counts toward the total, but as a separate charge.
+  * "if required" / "if needed" items marked "not currently included" / "not included" with an amount -> included:false, cost:[amount].
+  * Services in the "Quotation Includes" / "Included" list -> included:true, cost:null.
+- ABNORMAL VARIANTS DO NOT NEGATE AN INCLUSION: when the normal service is included (e.g., "Customs Clearance" under inclusions, "Normal Origin/Destination THC" included) and the exclusions only mention an abnormal or extra variant ("Abnormal customs clearance/examinations", "Shuttle service ... if the container is not available", "Warehouse handling if ..."), keep included:true. Set included:false only when the normal service itself is excluded or priced separately.
+- INSURANCE IS NEVER A COST: insurance premiums, insurance estimates or "insurance cost" amounts must NOT go to "other" and must NOT be added to baseCost or any service cost, whether or not they are marked as included. Express insurance only through insurancePercentage (e.g., "$28.00 per $1,000 of value" -> 2.8; "$208,292.00 coverage = $5,832.18 cost" -> 2.8).
 
 UNMATCHED VALUES RULE:
 - The "other" array should ONLY contain costs, fees, or information that CANNOT be mapped to any of the standard fields (baseCost or serviceItems).
